@@ -38,7 +38,7 @@ if __name__ == "__main__":
       '--rate-of-descent', type=int, default=500, help='Rate of descent in feet per minute.'
   )
   parser.add_argument(
-      '--datetime', type=str, default=datetime.datetime.now().strftime('%Y-%m-%dT%H:00'), help='Date of the flight'
+      '--datetime', type=datetime.datetime, default=datetime.datetime.now(), help='Date of the flight'
   )
 
   args = parser.parse_args()
@@ -52,6 +52,6 @@ if __name__ == "__main__":
       vy=args.vy,
       rate_of_climb=args.rate_of_climb,
       rate_of_descent=args.rate_of_descent,
-      datetime=args.datetime,
+      flight_start_date=args.datetime,
   )
   print(tabulate(table, headers="firstrow", tablefmt="grid"))

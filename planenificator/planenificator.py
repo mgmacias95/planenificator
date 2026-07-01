@@ -3,6 +3,7 @@ of coordinates defined in a KML file.
 """
 
 import csv
+import datetime
 import logging
 import time
 from geopy.distance import geodesic
@@ -21,7 +22,7 @@ def generate_navigation_report(
     vy: int,
     rate_of_climb: int,
     rate_of_descent: int,
-    datetime: str
+    flight_start_date: datetime.datetime
 ):
   """Generates operational plan.
 
@@ -34,7 +35,7 @@ def generate_navigation_report(
     vy: best rate of climb (v_y) speed in knots
     rate_of_climb: rate of climb in feet per minute.
     rate_of_descent: rate of descent in feet per minute.
-    datetime: date of the flight in ISO 8601 format
+    flight_start_date: date of the flight
   """
   coords = kml.parse_kml_polygon(input_kml)
   if not coords:
@@ -94,7 +95,9 @@ def generate_navigation_report(
     dist_nm = geodesic(p1, p2).nautical
     total_traveled_distance += dist_nm
 
-    met = meteo.fetch_meteo(*coords[i], datetime)
+    met = meteo.fetch_meteo(
+        *coords[i], flight_start_date.strftime('%Y-%m-%dT%H:00')
+    )
 
     # compute the true heading between the current and the next waypoint
     # TODO: also compute the heading taking the wind in account.
@@ -113,6 +116,7 @@ def generate_navigation_report(
 
     # compute estimated time between the current and the next waypoint
     ete = helpers.calculate_leg_ete(dist_nm, gs)
+    flight_start_date += datetime.timedelta(minutes=ete)
     total_time += ete
 
     # check if we reached the TOC or not
@@ -132,20 +136,25 @@ def generate_navigation_report(
         gs,
         round(dist_nm, 2),
         ete,
-        total_time,
+        flight_start_date,
     ])
 
   # calculate top of descent, this needs to be done in the end because
   # we need to know the total travel time.
   logging.debug(f'{total_time=} {descend_time=}')
-  time_to_start_descent = total_time - descend_time
+  is_descending = True
+  time_to_start_descent = flight_start_date - datetime.timedelta(minutes=descend_time)
   logging.debug('Time to start descent: %s', time_to_start_descent)
-  for row in reversed(table):
-    if row[-1] <= time_to_start_descent: 
+
+  for row in reversed(table[1:]):
+    if is_descending and row[-1] <= time_to_start_descent: 
       logging.debug('Reached TOD')
       row[0] += ' (TOD)'
-      break 
+      is_descending = False
+    # pretty print the ETA showing only the time and minutes (assuming the
+    # flight does not take more than a day)
+    row[-1] = row[-1].strftime('%H:%M')
 
-  table.append(['Total', 0, '', 0, 0, total_traveled_distance, total_time])
+  table.append(['Total', '', '', '', '', total_traveled_distance, total_time, ''])
 
   return table
