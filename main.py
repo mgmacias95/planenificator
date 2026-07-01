@@ -1,7 +1,7 @@
 import argparse
 import datetime
 import logging
-from nav_prep import nav_prep
+from planenificator import planenificator
 from tabulate import tabulate
 
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
   args = parser.parse_args()
 
-  table = nav_prep.generate_navigation_report(
+  table = planenificator.generate_navigation_report(
       input_kml=args.kml,
       initial_alt=args.initial_alt,
       arrival_alt=args.arrival_alt,
