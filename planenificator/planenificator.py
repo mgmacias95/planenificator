@@ -60,6 +60,7 @@ def generate_navigation_report(
   table.append([
       'Waypoint',
       'True course',
+      'Heading',
       'Wind',
       # 'Altitude',
       # 'Magnetic Course',
@@ -99,19 +100,18 @@ def generate_navigation_report(
         *coords[i], flight_start_date.strftime('%Y-%m-%dT%H:00')
     )
 
-    # compute the true heading between the current and the next waypoint
-    # TODO: also compute the heading taking the wind in account.
-    heading = helpers.calculate_bearing(p1[0], p1[1], p2[0], p2[1])
+    # compute the true course between the current and the next waypoint
+    true_course = helpers.calculate_bearing(p1[0], p1[1], p2[0], p2[1])
 
     # decide the speed we will be flying: either rate of climb or true airspeed
     speed = vy if is_climbing else tas
 
     # compute ground speed
-    gs = helpers.calculate_ground_speed(
+    gs, heading = helpers.calculate_ground_speed_and_heading(
         tas=speed,
         wind_speed=met.wind_speed_850hPa,
         wind_direction=met.wind_direction_850hPa,
-        true_course=heading
+        true_course=true_course
     )
 
     # compute estimated time between the current and the next waypoint
@@ -130,6 +130,7 @@ def generate_navigation_report(
     wind_str = f"{met.wind_direction_850hPa:.0f}° / {met.wind_speed_850hPa:.1f} kt"
     table.append([
         point_names[i],
+        round(true_course, 1),
         round(heading, 1),
         wind_str,
         speed,
@@ -155,6 +156,8 @@ def generate_navigation_report(
     # flight does not take more than a day)
     row[-1] = row[-1].strftime('%H:%M')
 
-  table.append(['Total', '', '', '', '', total_traveled_distance, total_time, ''])
+  table.append(
+      ['Total', '', '', '', '', '', total_traveled_distance, total_time, '']
+  )
 
   return table

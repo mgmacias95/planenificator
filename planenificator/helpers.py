@@ -22,8 +22,13 @@ def calculate_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
   return (math.degrees(math.atan2(y, x)) + 360) % 360
 
 
-def calculate_ground_speed(tas, wind_speed, wind_direction, true_course):
-  """Calculates the ground speed of an aircraft.
+def calculate_ground_speed_and_heading(
+    tas: float,
+    wind_speed: float,
+    wind_direction: float,
+    true_course: float
+) -> tuple[float, float]:
+  """Calculates the ground speed and heading of an aircraft.
 
   Uses the exact wind triangle resolution from:
   https://www.calctool.org/kinetics/ground-speed
@@ -32,6 +37,8 @@ def calculate_ground_speed(tas, wind_speed, wind_direction, true_course):
     alpha = arcsin((wind_speed / tas) * sin(wind_direction - true_course))
   Then computes the ground speed using the Law of Cosines:
     v_g = sqrt(tas^2 + wind_speed^2 - 2*tas*wind_speed*cos(true_course - wind_direction + alpha))
+  And finally, the aircraft's heading:
+    heading = true_course + alpha
 
   Args:
     tas: true airspeed in knots
@@ -40,7 +47,7 @@ def calculate_ground_speed(tas, wind_speed, wind_direction, true_course):
     true_course: true course in degrees
 
   Returns:
-    Ground speed in knots
+    Tuple(ground speed in knots, heading in degrees)
   """
   wd_rad = math.radians(wind_direction)
   tc_rad = math.radians(true_course)
@@ -56,8 +63,8 @@ def calculate_ground_speed(tas, wind_speed, wind_direction, true_course):
   # Calculate ground speed using the Law of Cosines formula from CalcTool
   term = tas**2 + wind_speed**2 - 2 * tas * wind_speed * math.cos(tc_rad - wd_rad + alpha_rad)
   if term < 0.0:
-    return 0.0
-  return math.sqrt(term)
+    return 0.0, 0.0
+  return math.sqrt(term), math.degrees(tc_rad + alpha_rad) % 360
 
 
 def calculate_leg_ete(distance_nm: float, ground_speed: float) -> float:
