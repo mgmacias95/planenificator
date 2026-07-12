@@ -39,6 +39,7 @@ def fetch_meteo(lat, lon, time):
     'wind_direction_975hPa',
     'wind_speed_850hPa',
     'wind_direction_850hPa',
+    'pressure_msl',
   ])
 
   # DISCLAIMER: this is using model ECMWF, which is better than the default GFS
@@ -49,7 +50,7 @@ def fetch_meteo(lat, lon, time):
       f'https://api.open-meteo.com/v1/ecmwf?latitude={lat}&longitude={lon}&'
       f'current={variables}&'
       f'hourly={variables}&'
-      'wind_speed_unit=kn'
+      'wind_speed_unit=kn&'
   )
 
   response = requests.get(url)
