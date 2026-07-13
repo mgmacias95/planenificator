@@ -62,7 +62,7 @@ def generate_navigation_report(
       'True course',
       'Heading',
       'Wind',
-      # 'Altitude',
+      'Altitude',
       # 'Magnetic Course',
       'TAS',
       'GS',
@@ -96,8 +96,10 @@ def generate_navigation_report(
     dist_nm = geodesic(p1, p2).nautical
     total_traveled_distance += dist_nm
 
+    current_altitude = initial_alt if is_climbing else cruise_alt
     met = meteo.fetch_meteo(
-        *coords[i], flight_start_date.strftime('%Y-%m-%dT%H:00')
+        *coords[i], flight_start_date.strftime('%Y-%m-%dT%H:00'), 
+        target_altitude=current_altitude
     )
 
     # compute the true course between the current and the next waypoint
@@ -109,8 +111,8 @@ def generate_navigation_report(
     # compute ground speed
     gs, heading = helpers.calculate_ground_speed_and_heading(
         tas=speed,
-        wind_speed=met.wind_speed_850hPa,
-        wind_direction=met.wind_direction_850hPa,
+        wind_speed=met.wind_speed,
+        wind_direction=met.wind_direction,
         true_course=true_course
     )
 
@@ -125,14 +127,13 @@ def generate_navigation_report(
       is_climbing = False
       point_names[i+1] += ' (TOC)'
 
-    # TODO: use the wind direction at the correct hPa based on the current 
-    # altitude, instead of using 850hPa.
-    wind_str = f"{met.wind_direction_850hPa:.0f}° / {met.wind_speed_850hPa:.1f} kt"
+    wind_str = f"{met.wind_direction:.0f}° / {met.wind_speed:.1f} kt"
     table.append([
         point_names[i],
         round(true_course, 1),
         round(heading, 1),
         wind_str,
+        current_altitude,
         speed,
         gs,
         round(dist_nm, 2),
@@ -155,6 +156,9 @@ def generate_navigation_report(
     # pretty print the ETA showing only the time and minutes (assuming the
     # flight does not take more than a day)
     row[-1] = row[-1].strftime('%H:%M')
+  # update the altitude of the last row to display the altitude in which 
+  # the route will be finished.
+  table[-1][4] = arrival_alt
 
   table.append(
       ['Total', '', '', '', '', '', total_traveled_distance, total_time, '']

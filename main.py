@@ -37,8 +37,11 @@ if __name__ == "__main__":
   parser.add_argument(
       '--rate-of-descent', type=int, default=500, help='Rate of descent in feet per minute.'
   )
+  date_format = '%Y-%m-%d %H:%M'
   parser.add_argument(
-      '--datetime', type=datetime.datetime, default=datetime.datetime.now(), help='Date of the flight'
+      '--datetime', type=lambda s: datetime.datetime.strptime(s, date_format),
+      default=datetime.datetime.now().strftime(date_format),
+      help=f'Date of the flight in format {date_format}'
   )
 
   args = parser.parse_args()
