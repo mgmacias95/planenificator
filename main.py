@@ -6,7 +6,7 @@ from tabulate import tabulate
 
 
 if __name__ == "__main__":
-  logging.basicConfig(level=logging.DEBUG)
+  logging.basicConfig(level=logging.INFO)
   logging.getLogger('urllib3').setLevel(logging.INFO)
   logging.getLogger('geopy').setLevel(logging.INFO)
 

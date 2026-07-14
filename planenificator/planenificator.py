@@ -116,6 +116,13 @@ def generate_navigation_report(
         true_course=true_course
     )
 
+    if not helpers.check_semi_circular_rule(true_course, current_altitude):
+      logging.warning(
+          'Semi circular rule not followed for leg %s -> %s '
+          '(true course: %f, alt: %d)', 
+          point_names[i], point_names[i+1], true_course, current_altitude
+      )
+
     # compute estimated time between the current and the next waypoint
     ete = helpers.calculate_leg_ete(dist_nm, gs)
     flight_start_date += datetime.timedelta(minutes=ete)

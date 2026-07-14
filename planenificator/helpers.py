@@ -93,3 +93,30 @@ def calculate_top_time(
     rate: rate of climb/descent in feet per minute.
   """
   return (cruise_alt - initial_alt) / rate
+
+
+def check_semi_circular_rule(course: float, altitude: int):
+  """Check if the course is valid according to the semi circular rule.
+
+  In Europe, when flying above 3,000 feet AGL, you must maintain a cruising
+  altitude based on your magnetic track, adding 500 feet to standard IFR levels.
+    * Track 090° to 269° (Eastbound): Odd thousands of feet + 500 ft.
+    * Track 270° to 089° (Westbound): Even thousands of feet + 500 ft.
+
+  Source:
+  https://guiavfr.enaire.es/contenido_GuiaVFR/LE_guiaVFR_GEN.html
+  https://guiavfr.enaire.es/contenido_GuiaVFR/LE_guiaVFR_GEN_img/FL.png
+
+  Args:
+    course: true course in degrees
+    altitude: altitude in feet
+  """
+  thousands = altitude // 1000
+  is_odd = thousands % 2 != 0
+  is_even = thousands % 2 == 0
+  ends_in_500 = altitude % 1000 == 500
+
+  return altitude < 3000 or ends_in_500 and (
+      (90 <= course < 270 and is_odd) or
+      ((course >= 270 or course < 90) and is_even)
+  )
