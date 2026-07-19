@@ -14,7 +14,7 @@ if __name__ == "__main__":
       description='Generate plane route navigation report.'
   )
   parser.add_argument(
-      '--kml', default='ruta.kml', help='KML route file'
+      '--kml', default='test/test_data/route.kml', help='KML route file'
   )
   parser.add_argument(
       '--initial-alt', type=int, default=2500, help='Initial altitude (usually departure altitude indicated on the VFR chart)'

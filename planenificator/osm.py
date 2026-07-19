@@ -26,6 +26,9 @@ def get_osm_landmark(lat, lon):
       return address['aeroway']
     if 'airport' in address:
       return address['airport']
+    # check for highlighted landmarks (easy to see from the air)
+    if 'tourism' in address:
+      return address['tourism']
 
     # Priority 2: Check for Village/Town/Hamlet names
     # OSM uses various keys for small settlements
