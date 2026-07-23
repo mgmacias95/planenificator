@@ -46,7 +46,7 @@ if __name__ == "__main__":
   parser.add_argument(
       '--datetime', type=lambda s: datetime.datetime.strptime(s, date_format),
       default=datetime.datetime.now().strftime(date_format),
-      help=f'Date of the flight in format {date_format}'
+      help=f'Date of the flight in format {date_format.replace("%", "%%")}'
   )
   parser.add_argument(
       '--dep', type=str, default='LEBA', 
