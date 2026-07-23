@@ -11,6 +11,7 @@ import planenificator.osm as osm
 import planenificator.kml_parser as kml
 import planenificator.meteo as meteo
 import planenificator.helpers as helpers
+import planenificator.notams_spain as notams
 
 
 def generate_navigation_report(
@@ -22,7 +23,10 @@ def generate_navigation_report(
     vy: int,
     rate_of_climb: int,
     rate_of_descent: int,
-    flight_start_date: datetime.datetime
+    flight_start_date: datetime.datetime,
+    dep_aerodrome: str = None,
+    dest_aerodrome: str = None,
+    alt_aerodromes: list[str] = None
 ):
   """Generates operational plan.
 
@@ -37,6 +41,7 @@ def generate_navigation_report(
     rate_of_descent: rate of descent in feet per minute.
     flight_start_date: date of the flight
   """
+  start_time = flight_start_date
   coords = kml.parse_kml_polygon(input_kml)
   if not coords:
     logging.warning('No coordinates found.')
@@ -171,4 +176,38 @@ def generate_navigation_report(
       ['Total', '', '', '', '', '', total_traveled_distance, total_time, '']
   )
 
-  return table
+  # NOTAM checks
+  notam_data = {
+      'route_conflicts': [],
+      'aerodrome_conflicts': [],
+      'all_aerodrome_notams': [],
+      'all_route_notams': []
+  }
+  
+  # Fetch and check route NOTAMs
+  logging.info('Checking available NOTAMs...')
+  route_notams = notams.fetch_notams_by_route(coords)
+  notam_data['all_route_notams'] = route_notams
+  
+  min_alt = min(initial_alt, arrival_alt, cruise_alt)
+  max_alt = max(initial_alt, arrival_alt, cruise_alt)
+  
+  notam_data['route_conflicts'] = notams.check_route_conflicts(
+      route_notams, start_time, flight_start_date, min_alt, max_alt
+  )
+  
+  # Fetch and check aerodrome NOTAMs
+  ad_list = []
+  if dep_aerodrome: ad_list.append(dep_aerodrome)
+  if dest_aerodrome: ad_list.append(dest_aerodrome)
+  if alt_aerodromes: ad_list.extend(alt_aerodromes)
+  
+  if ad_list:
+      logging.info(f"Consultando NOTAMs de aeródromos: {ad_list}...")
+      ad_notams = notams.fetch_notams_by_aerodromes(ad_list)
+      notam_data['all_aerodrome_notams'] = ad_notams
+      notam_data['aerodrome_conflicts'] = notams.check_aerodrome_conflicts(
+          ad_notams, dep_aerodrome, dest_aerodrome, alt_aerodromes, start_time, flight_start_date
+      )
+
+  return table, notam_data
