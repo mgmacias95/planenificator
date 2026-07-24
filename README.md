@@ -1,48 +1,66 @@
 # Planenificator ✈️
 
-Planenificator is a CLI-based flight planning and navigation log preparation tool designed for VFR (Visual Flight Rules) flights. It parses routes from KML files, retrieves real-time weather forecasts to calculate wind correction angle and ground speed, geocodes waypoints, checks altitude compliance with the semi-circular rule, and cross-references active NOTAMs to detect conflicts along the route and at selected aerodromes.
+Planenificator is a serverless, interactive Web Application and CLI-based flight planning and navigation log preparation tool designed for VFR (Visual Flight Rules) flights. 
+
+It allows pilots to plan their routes interactively on a map, overlay georeferenced ENAIRE VFR charts, fetch real-time weather forecasts to calculate headings and ground speeds, verify compliance with the semi-circular flight level rules, filter active NOTAMs to detect conflicts, and print a complete Operational Briefing package to PDF.
 
 ---
 
 ## Features
 
-- 🛰️ **Route Parsing**: Automatically extracts coordinates from a Google Earth KML route (`LineString`).
-- 🗺️ **Landmark Geocoding**: Queries the OpenStreetMap (Nominatim) API to automatically identify nearest towns, villages, airports, or visible landmarks for each flight waypoint.
-- 💨 **Dynamic Wind Calculation**: Fetches forecasted wind direction and speed at specific altitudes along the flight path using the high-resolution **ECWF model** (via Open-Meteo API).
+- 🗺️ **Interactive Planning Map**: Add, drag, or delete waypoints on an interactive Leaflet map.
+- 🗺️ **Warped VFR Chart Overlays**: Georeference and display official ENAIRE VFR charts directly onto the map (supports Lambert Conformal Conic projections).
+- ⚡ **ENAIRE Live Catalog Downloader**: Browse the active catalog of ENAIRE VFR charts, download them directly, and load them in-memory without uploading maps to GitHub.
+- 💨 **Dynamic Wind Calculations**: Fetches forecasted wind direction and speed at specific altitudes along the flight path using the high-resolution **ECMWF model** (via Open-Meteo API).
 - 📐 **Wind Triangle Calculations**: Resolves the exact wind correction angle (WCA) to compute Heading and Ground Speed (GS) for each leg.
-- 📈 **Climb & Descent Profile**: Calculates Top of Climb (TOC) and Top of Descent (TOD) milestones dynamically, adjusting altitudes and speeds (e.g. Rate of Climb/Vy vs. Cruise/TAS) accordingly.
+- 📈 **Climb & Descent Profile**: Calculates Top of Climb (TOC) and Top of Descent (TOD) milestones dynamically, adjusting altitudes and speeds (e.g. Best Climb Vy vs. Cruise TAS) accordingly.
 - 🛑 **Semi-Circular Rule Verification**: Alerts if flight levels/cruising altitudes do not comply with standard European semi-circular flight level rules.
-- ⚠️ **ENAIRE Spain NOTAM Checking**:
+- ⚠️ **Smart NOTAM Conflict Checker**:
   - Queries ENAIRE's official ArcGIS servers for active Spanish NOTAMs.
   - Matches spatial coordinates (using a 2km safety corridor around the route).
   - Checks departure, destination, and alternate aerodrome NOTAMs.
-  - Performs **temporal overlap** and **altitude ceiling/floor checks** to warn about conflicts during the planned flight window.
+  - Parses daily schedule windows (Item D/Item E) to filter out inactive NOTAMs based on your takeoff hour.
+  - Warns about active conflicts and appends nearby informational NOTAMs to the printed briefing.
+- 🖨️ **Printable Navigation Briefing**: Exports a clean, formatted navigation log table, active conflicts warning header, and nearby NOTAM logs into a multi-page PDF briefing.
 
 ---
 
-## Installation
+## Getting Started (Web Application)
 
-### 1. Clone the repository
-```bash
-git clone <repository-url>
-cd nav_prep
-```
+The web application is **fully serverless** and runs Python logic directly inside the browser using Pyodide (WebAssembly).
 
-### 2. Set up virtual environment and install dependencies
+### Running Locally
+To run the Web UI locally:
+1. Clone the repository.
+2. Start a simple HTTP server in the repository root directory:
+   ```bash
+   python -m http.server 8080
+   ```
+3. Open your browser and navigate to **[http://localhost:8080/](http://localhost:8080/)**.
+
+### Deploying to GitHub Pages
+Since the app is purely static and client-side, you can host it directly on **GitHub Pages**:
+1. Enable GitHub Pages in your repository settings.
+2. Configure it to serve from the root of your repository.
+3. The `.nojekyll` file at the root ensures all Python package files are served correctly without Jekyll build errors.
+
+---
+
+## CLI Usage
+
+For advanced users, a command-line script is also available.
+
+### Installation
+Set up your virtual environment and install dependencies:
 ```bash
 uv venv
 source .venv/bin/activate
 uv pip compile -r requirements.txt -r requirements-dev.txt
 ```
 
----
-
-## Usage
-
-Run the tool using the command line. You can customize the route, altitudes, and aircraft characteristics:
-
+### Running the CLI
 ```bash
-python main.py [options]
+python main.py --kml=my_route.kml --dep LEBA --dest LEBA --alt LEDE --cruise-alt 5500 --tas 80 --datetime="2026-07-25 15:00"
 ```
 
 For information about available options run:
