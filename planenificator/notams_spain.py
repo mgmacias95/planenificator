@@ -218,9 +218,13 @@ def check_route_conflicts(
   """
   conflicts = []
   for notam in notams:
+    item_d = notam.get('itemD')
+    if not item_d or not item_d.strip():
+      item_d = notam.get('itemE')
+
     # 1. Check time overlap
     if not is_time_overlap(
-        notam.get('itemB'), notam.get('itemC'), start_time, end_time, notam.get('itemD')
+        notam.get('itemB'), notam.get('itemC'), start_time, end_time, item_d
     ):
       continue
 
@@ -314,8 +318,12 @@ def check_aerodrome_conflicts(
 
     # Check if the NOTAM is valid during the time window of interest for that
     # aerodrome
+    item_d = notam.get('itemD')
+    if not item_d or not item_d.strip():
+      item_d = notam.get('itemE')
+
     if not is_time_overlap(
-        notam.get('itemB'), notam.get('itemC'), target_start, target_end, notam.get('itemD')
+        notam.get('itemB'), notam.get('itemC'), target_start, target_end, item_d
     ):
       continue
 

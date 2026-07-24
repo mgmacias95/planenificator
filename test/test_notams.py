@@ -253,3 +253,43 @@ def test_is_time_overlap_with_schedule(flight_start, flight_end, expected):
   assert is_time_overlap(
       notam_start, notam_end, flight_start, flight_end, item_d
   ) is expected
+
+
+@pytest.mark.parametrize(
+    'flight_start, flight_end, expected_warnings_count',
+    [
+        # Saturday 15:00 (no Saturday closures in the afternoon) -> 0 warnings
+        (datetime(2026, 7, 25, 15, 0), datetime(2026, 7, 25, 16, 0), 0),
+        # Saturday 10:15 (overlaps SAT: 1030-1050 because of 1-hr departure buffer) -> 1 warning
+        (datetime(2026, 7, 25, 10, 15), datetime(2026, 7, 25, 11, 15), 1),
+        # Sunday 10:00 (no Sunday morning closures) -> 0 warnings
+        (datetime(2026, 7, 26, 10, 0), datetime(2026, 7, 26, 11, 0), 0),
+        # Sunday 15:00 (overlaps SUN: 1455-1525 and 1545-1605) -> 1 warning
+        (datetime(2026, 7, 26, 15, 0), datetime(2026, 7, 26, 16, 0), 1),
+        # Monday 12:00 (no Monday closures scheduled) -> 0 warnings
+        (datetime(2026, 7, 27, 12, 0), datetime(2026, 7, 27, 13, 0), 0),
+    ]
+)
+def test_check_aerodrome_conflicts_fallback_schedule(flight_start, flight_end, expected_warnings_count):
+  t_20_jul = local_epoch(datetime(2026, 7, 20, 0, 0))
+  t_30_jul = local_epoch(datetime(2026, 7, 30, 23, 59))
+
+  notams = [
+      {
+          'notamId': 'V31704/26',
+          'itemA': 'LEBA',
+          'itemB': t_20_jul,
+          'itemC': t_30_jul,
+          'itemD': None,  # Empty schedule field!
+          # Description contains the schedule text:
+          'itemE': 'AERODROME CLOSED VFR OPS, EXC OPERATIONAL TFC: TUE: 0940-1010/ 1035-1055 SAT: 0935-1005/ 1030-1050 SUN: 1455-1525/ 1545-1605',
+      }
+  ]
+
+  warnings = check_aerodrome_conflicts(
+      notams, dep_ad='LEBA', dest_ad='LEBA', alts=[], start_time=flight_start, end_time=flight_end
+  )
+  assert len(warnings) == expected_warnings_count
+  if expected_warnings_count > 0:
+    assert warnings[0][0]['notamId'] == 'V31704/26'
+    assert warnings[0][1] == 'CLOSED'
