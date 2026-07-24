@@ -1,6 +1,7 @@
 import requests
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 
 # ENAIRE ArcGIS REST FeatureServer URL
@@ -100,27 +101,106 @@ def fetch_notams_by_route(coords: list[tuple[float, float]]) -> list[dict]:
     return []
 
 
+def is_schedule_overlap(item_d: str, start_time: datetime, end_time: datetime) -> bool:
+  """Checks if the flight time window overlaps with the schedule in Item D."""
+  if not item_d:
+    return True  # Safe default: if no schedule, assume overlap
+
+  s = item_d.upper()
+
+  # Map days to weekday index (0=Monday, 6=Sunday)
+  day_map = {
+      'MON': 0, 'LUN': 0,
+      'TUE': 1, 'MAR': 1,
+      'WED': 2, 'MIE': 2,
+      'THU': 3, 'JUE': 3,
+      'FRI': 4, 'VIE': 4,
+      'SAT': 5, 'SAB': 5,
+      'SUN': 6, 'DOM': 6
+  }
+
+  # Find all day headers in the schedule
+  day_pattern = r'\b(MON|LUN|TUE|MAR|WED|MIE|THU|JUE|FRI|VIE|SAT|SAB|SUN|DOM|DAILY|DIARIO)\b'
+  matches = list(re.finditer(day_pattern, s))
+
+  flight_weekday = start_time.weekday()
+  relevant_slots_text = ""
+
+  if matches:
+    # Segment schedule by days
+    for idx, match in enumerate(matches):
+      day_word = match.group(1)
+      start_pos = match.start()
+      end_pos = matches[idx + 1].start() if idx + 1 < len(matches) else len(s)
+      segment = s[start_pos:end_pos]
+
+      is_relevant = False
+      if day_word in ['DAILY', 'DIARIO']:
+        is_relevant = True
+      else:
+        target_day_idx = day_map.get(day_word)
+        if target_day_idx == flight_weekday:
+          is_relevant = True
+
+      if is_relevant:
+        relevant_slots_text += " " + segment
+  else:
+    relevant_slots_text = s
+
+  if not relevant_slots_text.strip():
+    return False
+
+  # Find all HHMM-HHMM time intervals
+  time_pattern = r'\b(\d{2})(\d{2})-(\d{2})(\d{2})\b'
+  slots = re.findall(time_pattern, relevant_slots_text)
+
+  if not slots:
+    return True
+
+  # Convert flight window to minutes from midnight
+  flight_start_min = start_time.hour * 60 + start_time.minute
+  flight_end_min = end_time.hour * 60 + end_time.minute
+
+  # Cap first day at midnight for overlap checking
+  if end_time.date() > start_time.date():
+    flight_end_min = 24 * 60
+
+  # Check if any slot overlaps with the flight window
+  for sh_str, sm_str, eh_str, em_str in slots:
+    sh, sm = int(sh_str), int(sm_str)
+    eh, em = int(eh_str), int(em_str)
+    
+    slot_start = sh * 60 + sm
+    slot_end = eh * 60 + em
+
+    if flight_start_min < slot_end and flight_end_min > slot_start:
+      return True
+
+  return False
+
+
 def is_time_overlap(
-    notam_start_epoch, notam_end_epoch, start_time: datetime, end_time: datetime
+    notam_start_epoch, notam_end_epoch, start_time: datetime, end_time: datetime, item_d: str = None
 ) -> bool:
   """
   Checks if the flight interval [start_time, end_time] overlaps with the NOTAM 
-  validity.
+  validity and daily schedules.
   """
   if not notam_start_epoch:
-    return True  # If there is no start date, we assume it can apply
+    return True
 
   start_dt = datetime.fromtimestamp(notam_start_epoch / 1000)
 
-  # If the NOTAM starts after the flight ends, there is no overlap
   if start_dt > end_time:
     return False
 
   if notam_end_epoch:
     end_dt = datetime.fromtimestamp(notam_end_epoch / 1000)
-    # If the NOTAM ends before the flight starts, there is no overlap
     if end_dt < start_time:
       return False
+
+  if item_d:
+    return is_schedule_overlap(item_d, start_time, end_time)
 
   return True
 
@@ -140,7 +220,7 @@ def check_route_conflicts(
   for notam in notams:
     # 1. Check time overlap
     if not is_time_overlap(
-        notam.get('itemB'), notam.get('itemC'), start_time, end_time
+        notam.get('itemB'), notam.get('itemC'), start_time, end_time, notam.get('itemD')
     ):
       continue
 
@@ -235,7 +315,7 @@ def check_aerodrome_conflicts(
     # Check if the NOTAM is valid during the time window of interest for that
     # aerodrome
     if not is_time_overlap(
-        notam.get('itemB'), notam.get('itemC'), target_start, target_end
+        notam.get('itemB'), notam.get('itemC'), target_start, target_end, notam.get('itemD')
     ):
       continue
 

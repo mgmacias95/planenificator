@@ -1,6 +1,7 @@
 """OpenStreet map functions."""
 
 from geopy.geocoders import Nominatim
+import logging
 
 # OSM requires a unique user_agent string.
 geolocator = Nominatim(user_agent="martas_navigation_prep")
@@ -40,4 +41,5 @@ def get_osm_landmark(lat, lon):
     return address.get('road', f"Point_{lat:.3f}_{lon:.3f}")
 
   except Exception as e:
-    raise OSMException('Unknown location') from e
+    logging.warning('Error getting location: %s', e)
+    return f"Waypoint_{lat:.3f}_{lon:.3f}"

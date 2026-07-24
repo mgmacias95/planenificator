@@ -72,6 +72,4 @@ def test_get_osm_landmark_exception():
   with mock.patch.object(
       osm.geolocator, 'reverse', side_effect=Exception('Nominatim timeout')
   ):
-    with pytest.raises(osm.OSMException) as excinfo:
-      osm.get_osm_landmark(37.0, -5.0)
-    assert str(excinfo.value) == 'Unknown location'
+    assert osm.get_osm_landmark(37.0, -5.0) == 'Waypoint_37.000_-5.000'
