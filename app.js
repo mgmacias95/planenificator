@@ -74,7 +74,7 @@ async function initPyodideRuntime() {
 
     for (const file of files) {
       // Fetch relative to the /web directory (so up one level to find planenificator/)
-      const response = await fetch(`../planenificator/${file}`);
+      const response = await fetch(`planenificator/${file}`);
       if (!response.ok) {
         throw new Error(`Failed to load ${file} from static host`);
       }
