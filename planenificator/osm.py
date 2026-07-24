@@ -1,6 +1,7 @@
 """OpenStreet map functions."""
 
 from geopy.geocoders import Nominatim
+import logging
 
 # OSM requires a unique user_agent string.
 geolocator = Nominatim(user_agent="martas_navigation_prep")

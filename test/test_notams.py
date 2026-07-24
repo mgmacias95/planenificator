@@ -228,3 +228,28 @@ def test_check_aerodrome_conflicts():
   assert warnings[1][0]['notamId'] == 'V2'
   assert warnings[1][1] == 'LIMITED'
   assert warnings[1][2] == 'ARRIVAL'
+
+
+@pytest.mark.parametrize(
+    'flight_start, flight_end, expected',
+    [
+        # SAT 10:15 to 11:15 (overlaps SAT: 1030-1050)
+        (datetime(2026, 7, 25, 10, 15), datetime(2026, 7, 25, 11, 15), True),
+        # SAT 16:15 to 17:15 (no overlap on Saturday)
+        (datetime(2026, 7, 25, 16, 15), datetime(2026, 7, 25, 17, 15), False),
+        # SUN 15:50 to 16:20 (overlaps SUN: 1545-1605)
+        (datetime(2026, 7, 26, 15, 50), datetime(2026, 7, 26, 16, 20), True),
+        # MON 12:00 to 13:00 (no schedule for Monday)
+        (datetime(2026, 7, 27, 12, 0), datetime(2026, 7, 27, 13, 0), False),
+    ]
+)
+def test_is_time_overlap_with_schedule(flight_start, flight_end, expected):
+  item_d = "TUE: 0940-1010/ 1035-1055 THU: 1200-1230/ 1250-1310 SAT: 0935-1005/ 1030-1050 SUN: 1455-1525/ 1545-1605"
+  
+  # Overall NOTAM date range: July 20 to July 30 (enclosing our flights)
+  notam_start = local_epoch(datetime(2026, 7, 20, 0, 0))
+  notam_end = local_epoch(datetime(2026, 7, 30, 23, 59))
+
+  assert is_time_overlap(
+      notam_start, notam_end, flight_start, flight_end, item_d
+  ) is expected
