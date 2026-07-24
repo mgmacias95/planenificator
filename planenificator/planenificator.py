@@ -28,7 +28,7 @@ def generate_navigation_report(
     dest_aerodrome: str = None,
     alt_aerodromes: list[str] = None
 ):
-  """Generates operational plan.
+  """Generates operational plan from a KML file.
 
   Args:
     input_kml: file path of the kml file containing the route coordinates in KML format.
@@ -41,25 +41,60 @@ def generate_navigation_report(
     rate_of_descent: rate of descent in feet per minute.
     flight_start_date: date of the flight
   """
-  start_time = flight_start_date
   coords = kml.parse_kml_polygon(input_kml)
   if not coords:
     logging.warning('No coordinates found.')
-    return
+    return None
 
-  logging.info(
-      'Processing %d points. This will take at least %d seconds...',
-      len(coords), len(coords)
+  return generate_navigation_report_from_coords(
+      coords=coords,
+      point_names=None,
+      initial_alt=initial_alt,
+      arrival_alt=arrival_alt,
+      cruise_alt=cruise_alt,
+      tas=tas,
+      vy=vy,
+      rate_of_climb=rate_of_climb,
+      rate_of_descent=rate_of_descent,
+      flight_start_date=flight_start_date,
+      dep_aerodrome=dep_aerodrome,
+      dest_aerodrome=dest_aerodrome,
+      alt_aerodromes=alt_aerodromes
   )
 
-  point_names = []
-  for i, (lat, lon) in enumerate(coords):
-    name = osm.get_osm_landmark(lat, lon)
-    point_names.append(name)
-    logging.debug('Point %d: %s', i+1, name)
 
-    # CRITICAL: Nominatim policy requires 1 second between requests
-    time.sleep(1)
+def generate_navigation_report_from_coords(
+    coords: list[tuple[float, float]],
+    point_names: list[str] = None,
+    initial_alt: int = 2500,
+    arrival_alt: int = 2000,
+    cruise_alt: int = 5500,
+    tas: int = 80,
+    vy: int = 70,
+    rate_of_climb: int = 700,
+    rate_of_descent: int = 500,
+    flight_start_date: datetime.datetime = None,
+    dep_aerodrome: str = None,
+    dest_aerodrome: str = None,
+    alt_aerodromes: list[str] = None
+):
+  """Generates operational plan from a list of coordinates."""
+  if not coords:
+    logging.warning('No coordinates provided.')
+    return None
+
+  start_time = flight_start_date
+
+  if not point_names:
+    logging.info(
+        'Processing %d points. This will take at least %d seconds...',
+        len(coords), len(coords)
+    )
+    point_names = []
+    for i, (lat, lon) in enumerate(coords):
+      name = osm.get_osm_landmark(lat, lon)
+      point_names.append(name)
+      time.sleep(1)
 
   table = []
   table.append([
@@ -94,6 +129,7 @@ def generate_navigation_report(
       rate=rate_of_descent,
   )
 
+  semicircular_warnings = []
   for i in range(len(coords) - 1):
     p1, p2 = coords[i], coords[i+1]
 
@@ -122,11 +158,13 @@ def generate_navigation_report(
     )
 
     if not helpers.check_semi_circular_rule(true_course, current_altitude):
-      logging.warning(
-          'Semi circular rule not followed for leg %s -> %s '
-          '(true course: %f, alt: %d)', 
-          point_names[i], point_names[i+1], true_course, current_altitude
+      msg = (
+          f"Semi circular rule not followed for leg {point_names[i]} -> "
+          f"{point_names[i+1]} (true course: {true_course:.1f}°, alt: "
+          f"{current_altitude} ft)"
       )
+      logging.warning(msg)
+      semicircular_warnings.append(msg)
 
     # compute estimated time between the current and the next waypoint
     ete = helpers.calculate_leg_ete(dist_nm, gs)
@@ -181,7 +219,8 @@ def generate_navigation_report(
       'route_conflicts': [],
       'aerodrome_conflicts': [],
       'all_aerodrome_notams': [],
-      'all_route_notams': []
+      'all_route_notams': [],
+      'semicircular_warnings': semicircular_warnings
   }
   
   # Fetch and check route NOTAMs

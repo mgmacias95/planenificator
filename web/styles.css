@@ -1,0 +1,777 @@
+/* Base Styling & Variables */
+:root {
+  --bg-color: #0b0f19;
+  --bg-panel: rgba(17, 24, 39, 0.85);
+  --bg-input: #1f2937;
+  
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-focus: #00f0ff;
+  
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  --color-cyan: #00f0ff;
+  --color-yellow: #ffd600;
+  --color-red: #ff3b3b;
+  --color-green: #00e676;
+  
+  --font-family: 'Outfit', sans-serif;
+  --sidebar-width: 420px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* App Layout Grid */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+/* Sidebar HUD Panel */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  background-color: var(--bg-panel);
+  border-right: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+}
+
+.hud-panel {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.sidebar-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  font-size: 24px;
+}
+
+.logo-area h1 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--color-cyan);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+}
+
+.indicator-dot.ready {
+  background-color: var(--color-green);
+  box-shadow: 0 0 8px var(--color-green);
+}
+
+.indicator-dot.loading {
+  background-color: var(--color-yellow);
+  box-shadow: 0 0 8px var(--color-yellow);
+  animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+/* Sections */
+.section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.section h2 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-title-row h2 {
+  margin-bottom: 0;
+}
+
+/* Drag and Drop Zone */
+.drop-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+}
+
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--color-cyan);
+  background-color: rgba(0, 240, 255, 0.05);
+}
+
+.drop-zone p {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.drop-zone .subtext {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.loaded-files-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-input);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  border-left: 3px solid var(--color-cyan);
+}
+
+.file-item .file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+.file-item .remove-btn {
+  color: var(--color-red);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Waypoint List */
+.waypoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.waypoint-item {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  padding: 10px 14px;
+  border-radius: 6px;
+  gap: 12px;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.waypoint-item:hover {
+  border-color: rgba(0, 240, 255, 0.4);
+}
+
+.waypoint-index {
+  background-color: var(--color-cyan);
+  color: var(--bg-color);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.waypoint-name {
+  flex-grow: 1;
+  font-weight: 400;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waypoint-coords {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.waypoint-remove {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.waypoint-remove:hover {
+  color: var(--color-red);
+}
+
+/* Flight parameter inputs */
+.input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-group label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.input-group input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 14px;
+  outline: none;
+}
+
+.input-group input:focus {
+  border-color: var(--color-cyan);
+}
+
+/* Buttons */
+.btn {
+  font-family: var(--font-family);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--color-cyan);
+  color: var(--bg-color);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #00d2df;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-danger {
+  background-color: rgba(255, 59, 59, 0.15);
+  border: 1px solid rgba(255, 59, 59, 0.3);
+  color: #ff8888;
+}
+
+.btn-danger:hover {
+  background-color: var(--color-red);
+  color: var(--text-primary);
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 10px;
+  border-radius: 4px;
+}
+
+.actions-row {
+  display: flex;
+  gap: 12px;
+}
+
+.actions-row .btn {
+  flex-grow: 1;
+}
+
+/* NOTAM Alerts */
+.notam-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.notam-card {
+  padding: 12px 14px;
+  border-radius: 6px;
+  border-left: 4px solid var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.02);
+  font-size: 12px;
+}
+
+.notam-card.closed {
+  border-left-color: var(--color-red);
+  background-color: rgba(255, 59, 59, 0.05);
+}
+
+.notam-card.limited {
+  border-left-color: var(--color-yellow);
+  background-color: rgba(255, 214, 0, 0.04);
+}
+
+.notam-card-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.notam-card-header .notam-id {
+  color: var(--color-yellow);
+}
+
+.notam-card.closed .notam-card-header .notam-id {
+  color: #ff8888;
+}
+
+.notam-card-text {
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.empty-message, .empty-table-message {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px 8px;
+}
+
+/* Map area */
+.main-content {
+  flex-grow: 1;
+  height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+#map {
+  flex-grow: 1;
+  width: 100%;
+  background-color: #111827;
+}
+
+/* Custom leaflet edits to match dark mode */
+.leaflet-container {
+  background: var(--bg-color) !important;
+}
+
+/* Flight Profile and Nav log panel */
+.nav-log-panel {
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
+  max-height: 35%;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.panel-header {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-cyan);
+}
+
+.weather-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.table-container {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.nav-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.nav-table th {
+  background-color: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.nav-table td {
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
+
+.nav-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.nav-table tbody tr.total-row {
+  font-weight: 600;
+  border-top: 2px solid var(--border-color);
+  background-color: rgba(0, 240, 255, 0.02);
+}
+
+.nav-table tbody tr.total-row td {
+  color: var(--color-cyan);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Success Button (Green accent) */
+.btn-success {
+  background-color: var(--color-green);
+  color: var(--bg-color);
+  box-shadow: 0 0 12px rgba(46, 204, 113, 0.25);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #2ecc71;
+  box-shadow: 0 0 16px rgba(46, 204, 113, 0.4);
+}
+
+/* Print-only containers hidden on the web UI screen */
+.print-flight-meta, #print-inactive-notams-section, .print-warnings-section {
+  display: none;
+}
+
+/* 🖨️ Print to PDF Stylesheet rules */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-family: var(--font-family) !important;
+  }
+
+  /* Reset layout constraints to allow natural multi-page scrolling and printing */
+  .app-container {
+    display: block !important;
+    height: auto !important;
+    width: auto !important;
+    overflow: visible !important;
+  }
+
+  .main-content {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide interactive maps, control containers, headers and inputs */
+  #map, .leaflet-control-container, header, .chart-upload-section, .route-section, .actions-section, .actions-row, .weather-meta {
+    display: none !important;
+  }
+
+  /* Flow the sidebar content inline naturally so nested NOTAMs are visible */
+  .sidebar {
+    display: block !important;
+    width: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Navigation Log table printed layout */
+  .nav-log-panel {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: 40px !important;
+    max-height: none !important;
+    height: auto !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .table-container {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Insert a nice header title at the top of the printed document */
+  .nav-log-panel::before {
+    content: "FLIGHT OPERATIONAL PLAN & VFR LOG" !important;
+    display: block !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    margin-bottom: 20px !important;
+    border-bottom: 2px solid black !important;
+    padding-bottom: 8px !important;
+    color: black !important;
+    letter-spacing: 1px !important;
+  }
+
+  /* Flight Profile printed Metadata summary styling */
+  .print-flight-meta {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 12px !important;
+    margin-bottom: 25px !important;
+    border-bottom: 2px solid black !important;
+    padding-bottom: 15px !important;
+    font-size: 10px !important;
+    color: black !important;
+    text-align: left !important;
+  }
+
+  .print-flight-meta div {
+    line-height: 1.4 !important;
+  }
+
+  .nav-table {
+    border: 1px solid black !important;
+    color: black !important;
+    background: white !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .nav-table th {
+    background-color: #f2f2f2 !important;
+    color: black !important;
+    border: 1px solid black !important;
+    font-weight: bold !important;
+    font-size: 10px !important;
+    padding: 6px !important;
+  }
+
+  .nav-table td {
+    border: 1px solid black !important;
+    color: black !important;
+    padding: 6px !important;
+    font-size: 10px !important;
+  }
+
+  .nav-table tbody tr.total-row {
+    background-color: #f9f9f9 !important;
+    border-top: 2px solid black !important;
+  }
+
+  .nav-table tbody tr.total-row td {
+    color: black !important;
+    font-weight: bold !important;
+  }
+
+  /* Airspace NOTAM alerts warning print configuration */
+  .notams-summary-section {
+    display: block !important;
+    page-break-before: always; /* Force NOTAM warnings to print on a separate page */
+    margin-top: 30px !important;
+    overflow: visible !important;
+  }
+
+  .notams-summary-section h2 {
+    display: none !important; /* Hide original web header */
+  }
+
+  .notams-summary-section::before {
+    content: "ACTIVE AIRSPACE & AIRPORT NOTAM ALERTS" !important;
+    display: block !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin-bottom: 15px !important;
+    border-bottom: 1px solid black !important;
+    padding-bottom: 5px !important;
+    color: black !important;
+  }
+
+  .notam-alerts-list {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .notam-card {
+    border: 1px solid black !important;
+    background: white !important;
+    color: black !important;
+    margin-bottom: 15px !important;
+    padding: 10px !important;
+    border-left: 5px solid black !important;
+    page-break-inside: avoid !important;
+  }
+
+  .notam-card-header {
+    border-bottom: 1px solid black !important;
+    color: black !important;
+    font-weight: bold !important;
+    margin-bottom: 6px !important;
+    padding-bottom: 3px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+  }
+
+  .notam-card-header .notam-id, .notam-card.closed .notam-card-header .notam-id {
+    color: black !important;
+  }
+
+  .notam-card-text {
+    font-size: 9px !important;
+    color: black !important;
+    font-family: monospace !important;
+  }
+
+  /* Inactive nearby NOTAMs printed styling block */
+  #print-inactive-notams-section {
+    display: block !important;
+    page-break-before: always !important;
+    margin-top: 30px !important;
+    overflow: visible !important;
+  }
+
+  .print-notams-header {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin-bottom: 18px !important;
+    border-bottom: 2px solid black !important;
+    padding-bottom: 6px !important;
+    color: black !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+  }
+
+  .print-warnings-section {
+    display: block !important;
+    margin-bottom: 20px !important;
+    padding: 10px 12px !important;
+    border: 1px solid #f1c40f !important;
+    border-left: 5px solid #f1c40f !important;
+    background: #fffdf0 !important;
+    color: black !important;
+    font-size: 10px !important;
+  }
+
+  /* Hide semicircular warning cards in the main alerts list during printing */
+  .semicircular-warning-card {
+    display: none !important;
+  }
+}
