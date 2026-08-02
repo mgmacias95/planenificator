@@ -100,8 +100,8 @@ def check_semi_circular_rule(course: float, altitude: int):
 
   In Europe, when flying above 3,000 feet AGL, you must maintain a cruising
   altitude based on your magnetic track, adding 500 feet to standard IFR levels.
-    * Track 090° to 269° (Eastbound): Odd thousands of feet + 500 ft.
-    * Track 270° to 089° (Westbound): Even thousands of feet + 500 ft.
+    * Track 090° to 269° (Southbound): Odd thousands of feet + 500 ft.
+    * Track 270° to 089° (Northbound): Even thousands of feet + 500 ft.
 
   Source:
   https://guiavfr.enaire.es/contenido_GuiaVFR/LE_guiaVFR_GEN.html

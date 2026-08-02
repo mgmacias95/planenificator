@@ -634,7 +634,7 @@ async function runFlightPlanningCalculations() {
       from planenificator.planenificator import generate_navigation_report_from_coords
 
       # Run navigation calculations
-      table, notam_data = generate_navigation_report_from_coords(
+      table, notam_data, seg_dist, seg_time = generate_navigation_report_from_coords(
           coords=py_coords,
           point_names=py_names,
           initial_alt=py_initial_alt,
@@ -649,6 +649,7 @@ async function runFlightPlanningCalculations() {
           dest_aerodrome=py_dest or None,
           alt_aerodromes=list(py_alts) if py_alts else None
       )
+
 
       # Convert outputs to serializable format
       serialized_table = []

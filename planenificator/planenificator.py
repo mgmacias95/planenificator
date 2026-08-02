@@ -97,21 +97,6 @@ def generate_navigation_report_from_coords(
       time.sleep(1)
 
   table = []
-  table.append([
-      'Waypoint',
-      'True course',
-      'Heading',
-      'Wind',
-      'Altitude',
-      # 'Magnetic Course',
-      'TAS',
-      'GS',
-      'Leg',
-      'ETE',
-      'ETA',
-      # 'Fuel',
-      # 'Remaining fuel'
-  ])
 
   total_traveled_distance, total_time = 0, 0
   # use a flag to control wether we are climbing or not
@@ -198,7 +183,7 @@ def generate_navigation_report_from_coords(
   time_to_start_descent = flight_start_date - datetime.timedelta(minutes=descend_time)
   logging.debug('Time to start descent: %s', time_to_start_descent)
 
-  for row in reversed(table[1:]):
+  for row in reversed(table):
     if is_descending and row[-1] <= time_to_start_descent: 
       logging.debug('Reached TOD')
       row[0] += ' (TOD)'
@@ -209,10 +194,6 @@ def generate_navigation_report_from_coords(
   # update the altitude of the last row to display the altitude in which 
   # the route will be finished.
   table[-1][4] = arrival_alt
-
-  table.append(
-      ['Total', '', '', '', '', '', total_traveled_distance, total_time, '']
-  )
 
   # NOTAM checks
   notam_data = {
@@ -242,11 +223,12 @@ def generate_navigation_report_from_coords(
   if alt_aerodromes: ad_list.extend(alt_aerodromes)
   
   if ad_list:
-      logging.info(f"Consultando NOTAMs de aeródromos: {ad_list}...")
+      logging.info(f"Checking NOTAMs for aerodromes: {ad_list}...")
       ad_notams = notams.fetch_notams_by_aerodromes(ad_list)
       notam_data['all_aerodrome_notams'] = ad_notams
       notam_data['aerodrome_conflicts'] = notams.check_aerodrome_conflicts(
           ad_notams, dep_aerodrome, dest_aerodrome, alt_aerodromes, start_time, flight_start_date
       )
 
-  return table, notam_data
+  return table, notam_data, total_traveled_distance, total_time
+

@@ -242,6 +242,45 @@ def check_route_conflicts(
   return conflicts
 
 
+def print_notams(notam_data: dict):
+  """Prints formatted NOTAM security warnings and detailed summaries."""
+  route_conflicts = notam_data.get('route_conflicts', [])
+  aerodrome_conflicts = notam_data.get('aerodrome_conflicts', [])
+
+  if route_conflicts or aerodrome_conflicts:
+    print('\n' + '\033[91m' + '=' * 20 + ' NOTAM SECURITY NOTICE ' + '=' * 20 + '\033[0m')
+    for c in route_conflicts:
+      print(
+          f"\n\033[91m[WARNING] EN ROUTE CONFLICT WITH NOTAM {c.get('notamId')} ({c.get('areaSactaName') or 'AREA'})\033[0m"
+      )
+      print(f"  Limits: FL{c.get('LOWER_VAL')} - FL{c.get('UPPER_VAL')}\n  Text: {c.get('itemE')}")
+
+    for item in aerodrome_conflicts:
+      c = item[0] if isinstance(item, (list, tuple)) else item
+      role = item[2] if isinstance(item, (list, tuple)) and len(item) > 2 else 'AERODROME'
+      print(
+          f"\n\033[91m[WARNING] {role} AERODROME ({c.get('itemA')}) CONFLICT WITH NOTAM {c.get('notamId')}\033[0m"
+      )
+      print(f"  Text: {c.get('itemE')}")
+    print('\033[91m' + '=' * 76 + '\033[0m')
+
+  ad_notams = notam_data.get('all_aerodrome_notams', [])
+  route_notams = notam_data.get('all_route_notams', [])
+
+  if ad_notams or route_notams:
+    print('\n' + '=' * 20 + ' DETAILED NOTAMS FOUND ' + '=' * 20)
+    if ad_notams:
+      print(f'\n--- AERODROME NOTAMS ({len(ad_notams)}) ---')
+      for n in ad_notams:
+        print(f"- {n.get('notamId')} ({n.get('itemA')}): {n.get('itemE')[:180]}...")
+    if route_notams:
+      print(f'\n--- EN ROUTE NOTAMS ({len(route_notams)}) ---')
+      for n in route_notams:
+        print(f"- {n.get('notamId')} ({n.get('areaSactaName') or 'AREA'}): {n.get('itemE')[:180]}...")
+    print('=' * 81)
+
+
+
 def check_aerodrome_conflicts(
     notams: list[dict],
     dep_ad: str,
