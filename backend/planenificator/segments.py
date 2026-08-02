@@ -84,7 +84,7 @@ def generate_multi_segment_navigation_report(
     total_dist += seg_dist
     total_time += seg_time
     current_date += datetime.timedelta(minutes=seg_time)
-    current_alt = target_exit_alt
+    current_alt = cruise_alt
 
     for key in merged_notam_data:
       for item in notam_data.get(key, []):
