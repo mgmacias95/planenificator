@@ -12,8 +12,9 @@ from planenificator import segments
 @mock.patch('planenificator.meteo.fetch_meteo', return_value=meteo.Meteo(0, 0))
 @mock.patch('planenificator.notams_spain.fetch_notams_by_route', return_value=[])
 @mock.patch('planenificator.notams_spain.fetch_notams_by_aerodromes', return_value=[])
+@mock.patch('time.sleep', return_value=None)
 def test_segmented_route(*_):
-  table, _, distance, time = segments.generate_multi_segment_navigation_report(
+  table, _ = segments.generate_multi_segment_navigation_report(
       kmls=['test/test_data/ruta_5500.kml', 'test/test_data/ruta_3500.kml'],
       cruise_alts=[5500, 3500],
       initial_alt=2500,
@@ -28,7 +29,15 @@ def test_segmented_route(*_):
       alt_aerodromes=['LEDE']
   )
 
-  assert table == []
+  # assert altitude is correctly set between the two segments
+  # point 1 is the first point in the route
+  assert table[1][4] == 2500
+  # point 3 is the latest point in the first segment
+  assert table[3][4] == 3500   
+  # point 4 is the first point in the second segment
+  assert table[4][4] == 3500
+  # point 7 is the latest point in the route
+  assert table[7][4] == 2000
 
 
 def test_mismatched_lengths():
