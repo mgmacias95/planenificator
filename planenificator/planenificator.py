@@ -46,55 +46,17 @@ def generate_navigation_report(
     logging.warning('No coordinates found.')
     return None
 
-  return generate_navigation_report_from_coords(
-      coords=coords,
-      point_names=None,
-      initial_alt=initial_alt,
-      arrival_alt=arrival_alt,
-      cruise_alt=cruise_alt,
-      tas=tas,
-      vy=vy,
-      rate_of_climb=rate_of_climb,
-      rate_of_descent=rate_of_descent,
-      flight_start_date=flight_start_date,
-      dep_aerodrome=dep_aerodrome,
-      dest_aerodrome=dest_aerodrome,
-      alt_aerodromes=alt_aerodromes
-  )
-
-
-def generate_navigation_report_from_coords(
-    coords: list[tuple[float, float]],
-    point_names: list[str] = None,
-    initial_alt: int = 2500,
-    arrival_alt: int = 2000,
-    cruise_alt: int = 5500,
-    tas: int = 80,
-    vy: int = 70,
-    rate_of_climb: int = 700,
-    rate_of_descent: int = 500,
-    flight_start_date: datetime.datetime = None,
-    dep_aerodrome: str = None,
-    dest_aerodrome: str = None,
-    alt_aerodromes: list[str] = None
-):
-  """Generates operational plan from a list of coordinates."""
-  if not coords:
-    logging.warning('No coordinates provided.')
-    return None
-
   start_time = flight_start_date
 
-  if not point_names:
-    logging.info(
-        'Processing %d points. This will take at least %d seconds...',
-        len(coords), len(coords)
-    )
-    point_names = []
-    for i, (lat, lon) in enumerate(coords):
-      name = osm.get_osm_landmark(lat, lon)
-      point_names.append(name)
-      time.sleep(1)
+  logging.info(
+      'Processing %d points. This will take at least %d seconds...',
+      len(coords), len(coords)
+  )
+  point_names = []
+  for i, (lat, lon) in enumerate(coords):
+    name = osm.get_osm_landmark(lat, lon)
+    point_names.append(name)
+    time.sleep(1)
 
   table = []
 

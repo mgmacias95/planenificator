@@ -2,11 +2,26 @@
 
 // State variables
 let map = null;
-let waypoints = [];
-let routePolyline = null;
-let waypointMarkers = [];
+let routeSegments = [
+  { id: 'seg_1', cruiseAlt: 5500, waypoints: [] }
+];
+let activeSegmentIndex = 0;
+let segmentPolylines = []; // Array of Leaflet L.polyline instances, one per route segment
+let waypointMarkers = []; // Array of { wpId, marker }
 let pyodide = null;
 let loadedCharts = []; // Array of { id, name, overlay, bounds }
+
+// Segment high-visibility color palette
+const SEGMENT_COLORS = [
+  '#00f0ff', // Cyan (Segment 1)
+  '#ff007f', // Vibrant Pink / Magenta (Segment 2)
+  '#ffd600', // Electric Yellow (Segment 3)
+  '#00e676', // Bright Neon Green (Segment 4)
+  '#ff9100', // Orange (Segment 5)
+  '#b388ff', // Violet (Segment 6)
+  '#ff3d00', // Red-Orange (Segment 7)
+  '#00e5ff'  // Deep Cyan (Segment 8)
+];
 
 // Initialize Map
 function initMap() {
@@ -21,19 +36,12 @@ function initMap() {
     maxZoom: 18
   }).addTo(map);
 
-  // Route vector path line
-  routePolyline = L.polyline([], {
-    color: '#00f0ff',
-    weight: 4,
-    opacity: 0.8,
-    className: 'animated-route'
-  }).addTo(map);
-
   // Map click listeners
   map.on('dblclick', function(e) {
     addWaypoint(e.latlng.lat, e.latlng.lng);
   });
 }
+
 
 // 📦 Pyodide (Python WASM) Initialization
 async function initPyodideRuntime() {
@@ -69,12 +77,12 @@ async function initPyodideRuntime() {
       "meteo.py",
       "notams_spain.py",
       "osm.py",
-      "planenificator.py"
+      "planenificator.py",
+      "segments.py"
     ];
 
     for (const file of files) {
-      // Fetch relative to the /web directory (so up one level to find planenificator/)
-      const response = await fetch(`planenificator/${file}`);
+      const response = await fetch(`planenificator/${file}?v=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to load ${file} from static host`);
       }
@@ -82,13 +90,13 @@ async function initPyodideRuntime() {
       pyodide.FS.writeFile(`planenificator/${file}`, code);
     }
 
-    // Patch Python requests to redirect to browser fetch calls (solving CORS & WASM socket limits)
+
+    // Patch Python requests to redirect to browser fetch calls
     pyodide.runPython(`
       import pyodide_http
       pyodide_http.patch_all()
     `);
 
-    // Complete loading state
     statusDot.className = "indicator-dot ready";
     statusText.innerText = "System Ready (Offline)";
     document.getElementById('calculate-btn').disabled = false;
@@ -101,9 +109,112 @@ async function initPyodideRuntime() {
   }
 }
 
-// 📍 Waypoint Management
+// 📍 Modal Dialog Controller for Segment Altitudes
+let currentModalCallback = null;
+
+function showSegmentModal(title, defaultAlt, onConfirm) {
+  const modalEl = document.getElementById('segment-modal');
+  const titleEl = document.getElementById('segment-modal-title');
+  const altInput = document.getElementById('modal-alt-input');
+  
+  titleEl.innerText = title;
+  altInput.value = defaultAlt;
+  currentModalCallback = onConfirm;
+  
+  modalEl.classList.remove('hidden');
+  altInput.focus();
+  altInput.select();
+}
+
+function closeSegmentModal() {
+  const modalEl = document.getElementById('segment-modal');
+  modalEl.classList.add('hidden');
+  currentModalCallback = null;
+}
+
+function confirmSegmentModal() {
+  const altInput = document.getElementById('modal-alt-input');
+  const alt = parseInt(altInput.value.trim(), 10);
+  if (!isNaN(alt) && alt > 0) {
+    const cb = currentModalCallback;
+    closeSegmentModal();
+    if (cb) {
+      cb(alt);
+    }
+  } else {
+    alert("Please enter a valid positive cruise altitude in feet.");
+  }
+}
+
+function promptAddNewSegment() {
+  const defaultAlt = document.getElementById('cruise-alt-input').value || "5500";
+  showSegmentModal("✈️ New Route Segment", defaultAlt, (alt) => {
+    const newSegId = 'seg_' + (routeSegments.length + 1);
+    const newSeg = { id: newSegId, cruiseAlt: alt, waypoints: [] };
+
+    // Connect last point of previous segment if available
+    const prevSeg = routeSegments[routeSegments.length - 1];
+    if (prevSeg && prevSeg.waypoints.length > 0) {
+      const lastWp = prevSeg.waypoints[prevSeg.waypoints.length - 1];
+      newSeg.waypoints.push(lastWp);
+    }
+
+    routeSegments.push(newSeg);
+    activeSegmentIndex = routeSegments.length - 1;
+    renderWaypointList();
+  });
+}
+
+function setActiveSegment(index) {
+  if (index >= 0 && index < routeSegments.length) {
+    activeSegmentIndex = index;
+    renderWaypointList();
+  }
+}
+
+function promptEditSegmentAlt(index) {
+  const currentAlt = routeSegments[index].cruiseAlt;
+  showSegmentModal(`✈️ Edit Segment ${index + 1} Altitude`, currentAlt, (alt) => {
+    routeSegments[index].cruiseAlt = alt;
+    renderWaypointList();
+  });
+}
+
+
+function removeSegment(index) {
+  if (routeSegments.length <= 1) return;
+  const removedSeg = routeSegments.splice(index, 1)[0];
+  
+  // Remove markers for waypoints unique to this segment
+  removedSeg.waypoints.forEach(wp => {
+    const isUsedElsewhere = routeSegments.some(s => s.waypoints.some(w => w.id === wp.id));
+    if (!isUsedElsewhere) {
+      const mIdx = waypointMarkers.findIndex(item => item.wpId === wp.id);
+      if (mIdx !== -1) {
+        map.removeLayer(waypointMarkers[mIdx].marker);
+        waypointMarkers.splice(mIdx, 1);
+      }
+    }
+  });
+
+  activeSegmentIndex = Math.max(0, Math.min(activeSegmentIndex, routeSegments.length - 1));
+  updateRouteVector();
+  renderWaypointList();
+}
+
 async function addWaypoint(lat, lon, name = null) {
-  const index = waypoints.length + 1;
+  if (routeSegments.length === 0) {
+    const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
+    routeSegments.push({ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [] });
+    activeSegmentIndex = 0;
+  }
+
+  const activeSeg = routeSegments[activeSegmentIndex];
+
+  let globalIndex = 0;
+  routeSegments.forEach(s => { globalIndex += s.waypoints.length; });
+  globalIndex += 1;
+
   const waypoint = {
     id: Date.now() + Math.random().toString(36).substr(2, 9),
     lat: lat,
@@ -111,18 +222,17 @@ async function addWaypoint(lat, lon, name = null) {
     name: name || `Loading waypoint name...`
   };
 
-  waypoints.push(waypoint);
+  activeSeg.waypoints.push(waypoint);
   updateRouteVector();
 
   // Create Marker
   const marker = L.marker([lat, lon], {
     draggable: true,
-    title: `WP ${index}`
+    title: `WP ${globalIndex}`
   }).addTo(map);
 
-  marker.bindPopup(`<b>WP ${index}:</b> ${waypoint.name}`).openPopup();
-  
-  // Listeners for marker changes
+  marker.bindPopup(`<b>WP:</b> ${waypoint.name}`).openPopup();
+
   marker.on('dragend', function(e) {
     const newLatLng = marker.getLatLng();
     waypoint.lat = newLatLng.lat;
@@ -132,36 +242,42 @@ async function addWaypoint(lat, lon, name = null) {
     resolveWaypointName(waypoint, marker);
   });
 
-  waypointMarkers.push(marker);
+  waypointMarkers.push({ wpId: waypoint.id, marker: marker });
 
-  // Render Sidebar Waypoint Item
   renderWaypointList();
-
-  // Resolve landmark geocoding in background asynchronously without blocking UI thread
   resolveWaypointName(waypoint, marker);
 }
 
-function removeWaypoint(id) {
-  const index = waypoints.findIndex(wp => wp.id === id);
-  if (index !== -1) {
-    // Remove marker from map
-    map.removeLayer(waypointMarkers[index]);
-    waypointMarkers.splice(index, 1);
-    waypoints.splice(index, 1);
-    
-    updateRouteVector();
-    renderWaypointList();
+function removeWaypoint(wpId) {
+  routeSegments.forEach(seg => {
+    const idx = seg.waypoints.findIndex(wp => wp.id === wpId);
+    if (idx !== -1) {
+      seg.waypoints.splice(idx, 1);
+    }
+  });
+
+  const mIdx = waypointMarkers.findIndex(item => item.wpId === wpId);
+  if (mIdx !== -1) {
+    map.removeLayer(waypointMarkers[mIdx].marker);
+    waypointMarkers.splice(mIdx, 1);
   }
+
+  updateRouteVector();
+  renderWaypointList();
 }
 
 function clearRoute() {
-  waypointMarkers.forEach(m => map.removeLayer(m));
+  waypointMarkers.forEach(m => map.removeLayer(m.marker));
   waypointMarkers = [];
-  waypoints = [];
+  segmentPolylines.forEach(p => map.removeLayer(p));
+  segmentPolylines = [];
+
+  const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
+  routeSegments = [{ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [] }];
+  activeSegmentIndex = 0;
   updateRouteVector();
   renderWaypointList();
-  
-  // Reset outputs
+
   document.getElementById('print-pdf-btn').disabled = true;
   document.getElementById('notam-alerts-list').innerHTML = '<p class="empty-message">No NOTAM conflicts checked yet.</p>';
   document.getElementById('nav-log-table').querySelector('tbody').innerHTML = 
@@ -169,12 +285,36 @@ function clearRoute() {
 }
 
 function updateRouteVector() {
-  const latLngs = waypoints.map(wp => [wp.lat, wp.lng]);
-  routePolyline.setLatLngs(latLngs);
-  
-  // Fit bounds if we have 2+ points and no loaded chart overlay is active
-  if (latLngs.length >= 2 && loadedCharts.length === 0) {
-    map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
+  // Clear old segment polyline layers
+  segmentPolylines.forEach(p => map.removeLayer(p));
+  segmentPolylines = [];
+
+  const allBounds = [];
+
+  routeSegments.forEach((seg, sIdx) => {
+    if (seg.waypoints.length >= 2) {
+      const color = SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length];
+      const latLngs = seg.waypoints.map(wp => [wp.lat, wp.lng]);
+
+      const polyline = L.polyline(latLngs, {
+        color: color,
+        weight: 5,
+        opacity: 0.9,
+        className: 'animated-route'
+      }).addTo(map);
+
+      segmentPolylines.push(polyline);
+      allBounds.push(polyline.getBounds());
+    }
+  });
+
+  // Fit viewport to all route segments
+  if (allBounds.length > 0 && loadedCharts.length === 0) {
+    const combinedBounds = allBounds.reduce(
+      (acc, b) => acc.extend(b),
+      L.latLngBounds(allBounds[0].getSouthWest(), allBounds[0].getNorthEast())
+    );
+    map.fitBounds(combinedBounds, { padding: [50, 50] });
   }
 }
 
@@ -205,26 +345,74 @@ async function resolveWaypointName(waypoint, marker) {
   }
 
   // Update popup and lists
-  marker.getPopup().setContent(`<b>WP:</b> ${waypoint.name}`);
+  if (marker && marker.getPopup()) {
+    marker.getPopup().setContent(`<b>WP:</b> ${waypoint.name}`);
+  }
   renderWaypointList();
 }
 
 function renderWaypointList() {
   const listEl = document.getElementById('waypoint-list');
-  if (waypoints.length === 0) {
+  const hasWaypoints = routeSegments.some(s => s.waypoints.length > 0);
+  if (!hasWaypoints) {
     listEl.innerHTML = '<p class="empty-message">Double-click on the map or georeferenced chart to add waypoints.</p>';
     return;
   }
 
-  listEl.innerHTML = waypoints.map((wp, i) => `
-    <div class="waypoint-item" data-id="${wp.id}">
-      <span class="waypoint-index">${i + 1}</span>
-      <span class="waypoint-name">${wp.name}</span>
-      <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
-      <span class="waypoint-remove" onclick="removeWaypoint('${wp.id}')">✕</span>
-    </div>
-  `).join('');
+  let html = '';
+  let globalCount = 0;
+
+  routeSegments.forEach((seg, sIdx) => {
+    const isActive = (sIdx === activeSegmentIndex);
+    const segColor = SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length];
+
+    html += `
+      <div class="segment-group-card ${isActive ? 'active' : ''}" style="border-left: 4px solid ${segColor};">
+        <div class="segment-header-bar ${isActive ? 'active' : ''}" onclick="setActiveSegment(${sIdx})">
+          <span class="segment-title" style="color: ${segColor};">
+            <span class="seg-color-indicator" style="background-color: ${segColor}; box-shadow: 0 0 8px ${segColor};"></span>
+            Segment ${sIdx + 1} (${seg.cruiseAlt} ft) ${isActive ? '🟢 Active' : ''}
+          </span>
+          <div class="segment-actions">
+            <button class="btn-icon" onclick="event.stopPropagation(); promptEditSegmentAlt(${sIdx})" title="Edit Cruise Alt">✏️</button>
+            ${routeSegments.length > 1 ? `<button class="btn-icon" onclick="event.stopPropagation(); removeSegment(${sIdx})" title="Remove Segment">🗑️</button>` : ''}
+          </div>
+        </div>
+        <div class="segment-waypoints-container">
+    `;
+
+    if (seg.waypoints.length === 0) {
+      html += `<p class="empty-message" style="padding: 6px;">No waypoints in segment. Double-click map to add.</p>`;
+    } else {
+      seg.waypoints.forEach((wp, wIdx) => {
+        const isSharedFromPrev = (sIdx > 0 && wIdx === 0);
+        if (!isSharedFromPrev) {
+          globalCount++;
+        }
+
+        html += `
+          <div class="waypoint-item ${isSharedFromPrev ? 'shared-boundary' : ''}" data-id="${wp.id}">
+            <span class="waypoint-index" style="background-color: ${segColor}; color: #0b0f19;">${isSharedFromPrev ? '🔗' : globalCount}</span>
+            <span class="waypoint-name">${wp.name} ${isSharedFromPrev ? '<small style="color: var(--text-muted); font-size: 10px;">(From Seg ' + sIdx + ')</small>' : ''}</span>
+            <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
+            <span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>
+          </div>
+        `;
+      });
+    }
+
+    html += `
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
 }
+
+
+
+
 
 // 📂 Chart File Drop & Parsing (Unzipping VFR charts & reading TFW World Files)
 async function setupChartDropZone() {
@@ -573,17 +761,11 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
 
 // 📐 Flight calculations via Pyodide Wasm execution
 async function runFlightPlanningCalculations() {
-  if (waypoints.length < 2) {
-    alert("Please add at least two waypoints on the map first.");
-    return;
-  }
-
   const calculateBtn = document.getElementById('calculate-btn');
   calculateBtn.innerText = "Calculating...";
   calculateBtn.disabled = true;
 
   try {
-    const cruiseAlt = parseInt(document.getElementById('cruise-alt-input').value, 10);
     const tas = parseInt(document.getElementById('tas-input').value, 10);
     const initialAlt = parseInt(document.getElementById('initial-alt-input').value, 10);
     const arrivalAlt = parseInt(document.getElementById('arrival-alt-input').value, 10);
@@ -609,13 +791,43 @@ async function runFlightPlanningCalculations() {
     // Parse alternate codes
     const altAerodromes = alternatesText ? alternatesText.split(',').map(a => a.trim().toUpperCase()).filter(Boolean) : [];
 
-    // Prepare JSON waypoints payloads for the Python module
-    const pythonCoords = waypoints.map(wp => [wp.lat, wp.lng]);
-    const pythonNames = waypoints.map(wp => wp.name);
+    // Prepare multi-segment payloads by generating a KML file for each segment
+    const kmlPaths = [];
+    const cruiseAlts = [];
 
-    pyodide.globals.set("py_coords", pyodide.toPy(pythonCoords));
-    pyodide.globals.set("py_names", pyodide.toPy(pythonNames));
-    pyodide.globals.set("py_cruise_alt", cruiseAlt);
+    routeSegments.forEach((seg, idx) => {
+      if (seg.waypoints.length >= 2) {
+        const kmlFileName = `segment_${idx + 1}.kml`;
+        const coordsStr = seg.waypoints.map(wp => `${wp.lng},${wp.lat},0`).join(' ');
+        const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Segment ${idx + 1}</name>
+      <LineString>
+        <coordinates>
+          ${coordsStr}
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>`;
+        pyodide.FS.writeFile(kmlFileName, kmlContent);
+        kmlPaths.push(kmlFileName);
+        cruiseAlts.push(seg.cruiseAlt);
+      }
+    });
+
+    if (kmlPaths.length === 0) {
+      alert("Please add at least two waypoints to a segment first.");
+      calculateBtn.innerText = "Calculate Route";
+      calculateBtn.disabled = false;
+      return;
+    }
+
+    pyodide.globals.set("py_kmls", pyodide.toPy(kmlPaths));
+    pyodide.globals.set("py_cruise_alts", pyodide.toPy(cruiseAlts));
+
     pyodide.globals.set("py_tas", tas);
     pyodide.globals.set("py_initial_alt", initialAlt);
     pyodide.globals.set("py_arrival_alt", arrivalAlt);
@@ -627,19 +839,18 @@ async function runFlightPlanningCalculations() {
     pyodide.globals.set("py_dest", destAerodrome);
     pyodide.globals.set("py_alts", pyodide.toPy(altAerodromes));
 
-    // Call the python refactored functions using Pyodide
+    // Call python multi-segment calculation engine via Pyodide
     const results = pyodide.runPython(`
       import json
       import datetime
-      from planenificator.planenificator import generate_navigation_report_from_coords
+      import planenificator.segments
 
-      # Run navigation calculations
-      table, notam_data, seg_dist, seg_time = generate_navigation_report_from_coords(
-          coords=py_coords,
-          point_names=py_names,
+      # Run navigation calculations across route segments
+      table, notam_data = planenificator.segments.generate_multi_segment_navigation_report(
+          kmls=list(py_kmls),
+          cruise_alts=list(py_cruise_alts),
           initial_alt=py_initial_alt,
           arrival_alt=py_arrival_alt,
-          cruise_alt=py_cruise_alt,
           tas=py_tas,
           vy=py_vy,
           rate_of_climb=py_climb_rate,
@@ -654,7 +865,6 @@ async function runFlightPlanningCalculations() {
       # Convert outputs to serializable format
       serialized_table = []
       for row in table:
-          # Convert datetime objects to string representations
           str_row = [str(cell) for cell in row]
           serialized_table.append(str_row)
 
@@ -663,6 +873,7 @@ async function runFlightPlanningCalculations() {
           "notam_data": notam_data
       })
     `);
+
 
     const resultData = JSON.parse(results);
     console.log("Calculation results received from Wasm:", resultData);
@@ -676,17 +887,19 @@ async function runFlightPlanningCalculations() {
     // Populate print metadata panel
     const printMetaEl = document.getElementById('print-flight-meta');
     if (printMetaEl) {
+      const cruiseAltSummary = routeSegments.map((s, i) => `Seg ${i + 1}: ${s.cruiseAlt} ft`).join(', ');
       printMetaEl.innerHTML = `
         <div><strong>Departure Time:</strong><br>${new Date(depTimeStr).toLocaleString()}</div>
         <div><strong>DEP / DEST:</strong><br>${depAerodrome} / ${destAerodrome}</div>
         <div><strong>Alternates:</strong><br>${altAerodromes.join(', ') || 'None'}</div>
-        <div><strong>Cruise Alt:</strong><br>${cruiseAlt} ft</div>
+        <div><strong>Cruise Alt:</strong><br>${cruiseAltSummary}</div>
         <div><strong>Initial / Arrival Alt:</strong><br>${initialAlt} / ${arrivalAlt} ft</div>
         <div><strong>TAS:</strong><br>${tas} kts</div>
         <div><strong>Best Climb Vy:</strong><br>${vy} kts</div>
         <div><strong>Climb / Descent:</strong><br>${rateOfClimb} / ${rateOfDescent} fpm</div>
       `;
     }
+
 
     // Enable PDF download
     document.getElementById('print-pdf-btn').disabled = false;
@@ -1074,6 +1287,32 @@ window.addEventListener('DOMContentLoaded', () => {
   setupChartDropZone();
   initPyodideRuntime();
 
+  const addSegBtn = document.getElementById('add-segment-btn');
+  if (addSegBtn) {
+    addSegBtn.addEventListener('click', promptAddNewSegment);
+  }
+
+  // Modal dialog buttons & events
+  const confirmModalBtn = document.getElementById('modal-confirm-btn');
+  if (confirmModalBtn) confirmModalBtn.addEventListener('click', confirmSegmentModal);
+
+  const cancelModalBtn = document.getElementById('modal-cancel-btn');
+  if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeSegmentModal);
+
+  const closeModalBtn = document.getElementById('modal-close-btn');
+  if (closeModalBtn) closeModalBtn.addEventListener('click', closeSegmentModal);
+
+  const modalAltInput = document.getElementById('modal-alt-input');
+  if (modalAltInput) {
+    modalAltInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        confirmSegmentModal();
+      } else if (e.key === 'Escape') {
+        closeSegmentModal();
+      }
+    });
+  }
+
   // Set default departure date-time to current local time
   const now = new Date();
   const localOffset = now.getTimezoneOffset() * 60000;
@@ -1089,3 +1328,5 @@ window.addEventListener('DOMContentLoaded', () => {
   // Load online ENAIRE catalog list
   loadEnaireVFRChartsCatalog();
 });
+
+
