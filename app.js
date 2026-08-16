@@ -468,6 +468,17 @@ const GeotiffWarpedTileLayer = L.GridLayer.extend({
     this.scale = options.scale;
     this.isCanaries = options.isCanaries;
     this.crs = options.isCanaries ? "ENAIRE:GC" : "ENAIRE:LE";
+    
+    // Check if the world file coordinates are projected (meters in LCC) vs geographic (WGS84 degrees)
+    const { originX, originY } = this.tfwParams;
+    this.isProjected = Math.abs(originX) > 180 || Math.abs(originY) > 90;
+
+    // Pre-cache pixel data from source canvas for high-performance per-pixel reprojection
+    const ctx = this.sourceCanvas.getContext('2d');
+    this.sourceImageData = ctx.getImageData(0, 0, this.sourceCanvas.width, this.sourceCanvas.height);
+    this.sourcePixels = this.sourceImageData.data;
+    this.sourceWidth = this.sourceCanvas.width;
+    this.sourceHeight = this.sourceCanvas.height;
   },
 
   createTile: function(coords, done) {
@@ -475,54 +486,125 @@ const GeotiffWarpedTileLayer = L.GridLayer.extend({
     tile.width = 256;
     tile.height = 256;
     const ctx = tile.getContext('2d');
+    const tileImageData = ctx.createImageData(256, 256);
+    const tilePixels = tileImageData.data;
 
-    // 1. Get LatLng bounds of the tile
-    const tileBounds = this._tileCoordsToBounds(coords);
-    const swLatLng = tileBounds.getSouthWest();
-    const neLatLng = tileBounds.getNorthEast();
+    const srcPixels = this.sourcePixels;
+    const srcW = this.sourceWidth;
+    const srcH = this.sourceHeight;
+    const { originX, originY, pixelScaleX, pixelScaleY, rotationX = 0, rotationY = 0 } = this.tfwParams;
+    const scale = this.scale;
+    const crs = this.crs;
+    const isProjected = this.isProjected;
 
-    try {
-      // 2. Project tile corners to the LCC coordinate system (meters)
-      const [x_sw, y_sw] = proj4("WGS84", this.crs, [swLatLng.lng, swLatLng.lat]);
-      const [x_ne, y_ne] = proj4("WGS84", this.crs, [neLatLng.lng, neLatLng.lat]);
+    // Calculate determinant for TFW matrix inverse
+    const det = pixelScaleX * pixelScaleY - rotationX * rotationY;
+    const hasRotation = Math.abs(rotationX) > 1e-9 || Math.abs(rotationY) > 1e-9;
 
-      // 3. Map Easting/Northing meters to original TIFF pixel coordinates
-      const { originX, originY, pixelScaleX, pixelScaleY } = this.tfwParams;
-      
-      const px_left   = (x_sw - originX) / pixelScaleX;
-      const px_right  = (x_ne - originX) / pixelScaleX;
-      const py_top    = (y_ne - originY) / pixelScaleY;
-      const py_bottom = (y_sw - originY) / pixelScaleY;
+    // Grid sampling: divide 256x256 tile into 8x8 cells (32x32 px per cell)
+    const GRID_SIZE = 8;
+    const CELL_SIZE = 32;
 
-      // 4. Map original pixel coordinates to downsampled canvas coordinates
-      const sx = px_left * this.scale;
-      const sy = py_top * this.scale;
-      const sw = (px_right - px_left) * this.scale;
-      const sh = (py_bottom - py_top) * this.scale;
+    const gridSX = new Float32Array(81);
+    const gridSY = new Float32Array(81);
 
-      const sx_clean = Math.min(sx, sx + sw);
-      const sy_clean = Math.min(sy, sy + sh);
-      const sw_clean = Math.abs(sw);
-      const sh_clean = Math.abs(sh);
+    let tileHasData = false;
 
-      // Check overlap with the downsampled canvas bounds
-      const canvasWidth = this.sourceCanvas.width;
-      const canvasHeight = this.sourceCanvas.height;
+    for (let gy = 0; gy <= GRID_SIZE; gy++) {
+      const ty = gy * CELL_SIZE;
+      const mapY = coords.y * 256 + (ty === 256 ? 255.999 : ty);
+      for (let gx = 0; gx <= GRID_SIZE; gx++) {
+        const tx = gx * CELL_SIZE;
+        const mapX = coords.x * 256 + (tx === 256 ? 255.999 : tx);
 
-      // If no overlap, return empty tile
-      if (sx_clean + sw_clean < 0 || sx_clean > canvasWidth || sy_clean + sh_clean < 0 || sy_clean > canvasHeight) {
-        setTimeout(() => done(null, tile), 0);
-        return tile;
+        // Exact WGS84 coordinates for this point on the Web Mercator tile at current zoom level
+        const latLng = L.CRS.EPSG3857.pointToLatLng(L.point(mapX, mapY), coords.z);
+        
+        let x_m, y_m;
+        if (isProjected) {
+          [x_m, y_m] = proj4("WGS84", crs, [latLng.lng, latLng.lat]);
+        } else {
+          x_m = latLng.lng;
+          y_m = latLng.lat;
+        }
+
+        const dx = x_m - originX;
+        const dy = y_m - originY;
+
+        let px_orig, py_orig;
+        if (!hasRotation) {
+          px_orig = dx / pixelScaleX;
+          py_orig = dy / pixelScaleY;
+        } else {
+          px_orig = (dx * pixelScaleY - dy * rotationX) / det;
+          py_orig = (dy * pixelScaleX - dx * rotationY) / det;
+        }
+
+        const sx = px_orig * scale;
+        const sy = py_orig * scale;
+
+        const idx = gy * 9 + gx;
+        gridSX[idx] = sx;
+        gridSY[idx] = sy;
+
+        if (sx >= 0 && sx < srcW && sy >= 0 && sy < srcH) {
+          tileHasData = true;
+        }
       }
-
-      // Draw the sub-region of our downsampled canvas onto the tile
-      ctx.drawImage(this.sourceCanvas, sx_clean, sy_clean, sw_clean, sh_clean, 0, 0, 256, 256);
-      setTimeout(() => done(null, tile), 0);
-
-    } catch (err) {
-      setTimeout(() => done(null, tile), 0);
     }
 
+    if (!tileHasData) {
+      setTimeout(() => done(null, tile), 0);
+      return tile;
+    }
+
+    // Bilinear interpolation across cell grid vertices to render all pixels in tile
+    let tileIdx = 0;
+    for (let gy = 0; gy < GRID_SIZE; gy++) {
+      const rowStart = gy * 9;
+      for (let cy = 0; cy < CELL_SIZE; cy++) {
+        const v = cy / CELL_SIZE;
+        const invV = 1.0 - v;
+
+        for (let gx = 0; gx < GRID_SIZE; gx++) {
+          const v00 = rowStart + gx;
+          const v10 = v00 + 1;
+          const v01 = v00 + 9;
+          const v11 = v01 + 1;
+
+          const sx0 = gridSX[v00] * invV + gridSX[v01] * v;
+          const sx1 = gridSX[v10] * invV + gridSX[v11] * v;
+          const sy0 = gridSY[v00] * invV + gridSY[v01] * v;
+          const sy1 = gridSY[v10] * invV + gridSY[v11] * v;
+
+          const dSX = (sx1 - sx0) / CELL_SIZE;
+          const dSY = (sy1 - sy0) / CELL_SIZE;
+
+          let curSX = sx0;
+          let curSY = sy0;
+
+          for (let cx = 0; cx < CELL_SIZE; cx++) {
+            const isx = Math.floor(curSX);
+            const isy = Math.floor(curSY);
+
+            if (isx >= 0 && isx < srcW && isy >= 0 && isy < srcH) {
+              const srcIdx = (isy * srcW + isx) * 4;
+              tilePixels[tileIdx]     = srcPixels[srcIdx];
+              tilePixels[tileIdx + 1] = srcPixels[srcIdx + 1];
+              tilePixels[tileIdx + 2] = srcPixels[srcIdx + 2];
+              tilePixels[tileIdx + 3] = srcPixels[srcIdx + 3];
+            }
+
+            curSX += dSX;
+            curSY += dSY;
+            tileIdx += 4;
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(tileImageData, 0, 0);
+    setTimeout(() => done(null, tile), 0);
     return tile;
   }
 });
@@ -685,23 +767,26 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
   let sw, ne;
 
   if (isProjected) {
-    const tlCoords = projectLccToWgs84(originX, originY, isCanaries);
-    const brCoords = projectLccToWgs84(
-      originX + (pixelScaleX * width), 
-      originY + (pixelScaleY * height), 
-      isCanaries
-    );
+    const corners = [
+      projectLccToWgs84(originX, originY, isCanaries),
+      projectLccToWgs84(originX + (pixelScaleX * width), originY, isCanaries),
+      projectLccToWgs84(originX, originY + (pixelScaleY * height), isCanaries),
+      projectLccToWgs84(originX + (pixelScaleX * width), originY + (pixelScaleY * height), isCanaries)
+    ];
 
-    sw = L.latLng(brCoords.lat, tlCoords.lng);
-    ne = L.latLng(tlCoords.lat, brCoords.lng);
+    const lats = corners.map(c => c.lat);
+    const lngs = corners.map(c => c.lng);
+
+    sw = L.latLng(Math.min(...lats) - 0.1, Math.min(...lngs) - 0.1);
+    ne = L.latLng(Math.max(...lats) + 0.1, Math.max(...lngs) + 0.1);
   } else {
     const latSW = originY + (pixelScaleY * height);
     const lngSW = originX;
     const latNE = originY;
     const lngNE = originX + (pixelScaleX * width);
     
-    sw = L.latLng(latSW, lngSW);
-    ne = L.latLng(latNE, lngNE);
+    sw = L.latLng(Math.min(latSW, latNE) - 0.1, Math.min(lngSW, lngNE) - 0.1);
+    ne = L.latLng(Math.max(latSW, latNE) + 0.1, Math.max(lngSW, lngNE) + 0.1);
   }
 
   const bounds = L.latLngBounds(sw, ne);
@@ -709,11 +794,30 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
 
   // Decode and resample the TIFF image directly to the target canvas size
   console.log("Decoding and resampling TIFF to target size...");
-  const rgbData = await image.readRGB({
-    width: canvasWidth,
-    height: canvasHeight,
-    resampleMethod: 'bilinear'
-  });
+  let rgbData;
+  try {
+    rgbData = await image.readRGB({
+      width: canvasWidth,
+      height: canvasHeight,
+      resampleMethod: 'bilinear'
+    });
+  } catch (err) {
+    console.warn("image.readRGB failed, falling back to readRasters:", err);
+    const rasters = await image.readRasters({
+      width: canvasWidth,
+      height: canvasHeight,
+      resampleMethod: 'bilinear'
+    });
+    const r = rasters[0];
+    const g = rasters[1] || r;
+    const b = rasters[2] || r;
+    rgbData = new Uint8Array(canvasWidth * canvasHeight * 3);
+    for (let k = 0, p = 0; k < r.length; k++, p += 3) {
+      rgbData[p] = r[k];
+      rgbData[p + 1] = g[k];
+      rgbData[p + 2] = b[k];
+    }
+  }
   
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -738,7 +842,7 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
   const tileLayer = new GeotiffWarpedTileLayer({
     sourceCanvas: canvas, // our downsampled canvas
     bounds: bounds, // clips requests to actual map sheet boundaries
-    tfwParams: { originX, originY, pixelScaleX, pixelScaleY },
+    tfwParams: { originX, originY, pixelScaleX, pixelScaleY, rotationX, rotationY },
     scale: scale, // downsampling scale factor
     isCanaries: isCanaries,
     opacity: 0.85,
