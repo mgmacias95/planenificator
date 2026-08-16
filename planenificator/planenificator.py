@@ -127,13 +127,13 @@ def generate_navigation_report(
     wind_str = f"{met.wind_direction:.0f}° / {met.wind_speed:.1f} kt"
     table.append([
         point_names[i],
-        round(true_course, 1),
-        round(heading, 1),
+        round(true_course),
+        round(heading),
         wind_str,
         current_altitude,
         speed,
-        gs,
-        round(dist_nm, 2),
+        round(gs),
+        round(dist_nm),
         ete,
         flight_start_date,
     ])
