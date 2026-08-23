@@ -281,6 +281,10 @@ async function addWaypoint(lat, lon, name = null) {
 }
 
 function removeWaypoint(wpId) {
+  // Prevent removing shared boundary junction waypoints or waypoints in locked segments
+  const isSharedBoundary = routeSegments.some((seg, sIdx) => sIdx > 0 && seg.waypoints[0]?.id === wpId);
+  if (isSharedBoundary) return;
+
   const targetSegIdx = routeSegments.findIndex(seg => seg.waypoints.some(wp => wp.id === wpId));
   if (targetSegIdx !== -1 && isSegmentLocked(targetSegIdx)) return;
 
@@ -428,12 +432,18 @@ function renderWaypointList() {
           globalCount++;
         }
 
+        const actionHtml = isLocked
+          ? '<span style="font-size: 11px; opacity: 0.6; padding: 2px;" title="Waypoints in previous segments are locked">🔒</span>'
+          : (isSharedFromPrev
+              ? '<span style="font-size: 11px; opacity: 0.6; padding: 2px;" title="Segment junction waypoint">🔗</span>'
+              : `<span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>`);
+
         html += `
           <div class="waypoint-item ${isSharedFromPrev ? 'shared-boundary' : ''}" data-id="${wp.id}">
             <span class="waypoint-index" style="background-color: ${segColor}; color: #0b0f19;">${isSharedFromPrev ? '🔗' : globalCount}</span>
             <span class="waypoint-name" title="${wp.name}">${wp.name} ${isSharedFromPrev ? '<small style="color: var(--text-muted); font-size: 10px;">(From Seg ' + sIdx + ')</small>' : ''}</span>
             <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
-            ${!isLocked ? `<span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>` : '<span style="font-size: 11px; opacity: 0.6; padding: 2px;" title="Waypoints in previous segments are locked">🔒</span>'}
+            ${actionHtml}
           </div>
         `;
       });
