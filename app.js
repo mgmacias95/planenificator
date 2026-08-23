@@ -3,7 +3,7 @@
 // State variables
 let map = null;
 let routeSegments = [
-  { id: 'seg_1', cruiseAlt: 5500, waypoints: [] }
+  { id: 'seg_1', cruiseAlt: 5500, waypoints: [], collapsed: false }
 ];
 let activeSegmentIndex = 0;
 let segmentPolylines = []; // Array of Leaflet L.polyline instances, one per route segment
@@ -150,7 +150,7 @@ function promptAddNewSegment() {
   const defaultAlt = document.getElementById('cruise-alt-input').value || "5500";
   showSegmentModal("✈️ New Route Segment", defaultAlt, (alt) => {
     const newSegId = 'seg_' + (routeSegments.length + 1);
-    const newSeg = { id: newSegId, cruiseAlt: alt, waypoints: [] };
+    const newSeg = { id: newSegId, cruiseAlt: alt, waypoints: [], collapsed: false };
 
     // Connect last point of previous segment if available
     const prevSeg = routeSegments[routeSegments.length - 1];
@@ -158,6 +158,9 @@ function promptAddNewSegment() {
       const lastWp = prevSeg.waypoints[prevSeg.waypoints.length - 1];
       newSeg.waypoints.push(lastWp);
     }
+
+    // Collapse existing segments so the new active segment receives full focus
+    routeSegments.forEach(s => { s.collapsed = true; });
 
     routeSegments.push(newSeg);
     activeSegmentIndex = routeSegments.length - 1;
@@ -168,6 +171,17 @@ function promptAddNewSegment() {
 function setActiveSegment(index) {
   if (index >= 0 && index < routeSegments.length) {
     activeSegmentIndex = index;
+    routeSegments.forEach((s, i) => {
+      s.collapsed = (i !== index);
+    });
+    renderWaypointList();
+  }
+}
+
+function toggleSegmentCollapse(index, event) {
+  if (event) event.stopPropagation();
+  if (index >= 0 && index < routeSegments.length) {
+    routeSegments[index].collapsed = !routeSegments[index].collapsed;
     renderWaypointList();
   }
 }
@@ -205,7 +219,7 @@ function removeSegment(index) {
 async function addWaypoint(lat, lon, name = null) {
   if (routeSegments.length === 0) {
     const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
-    routeSegments.push({ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [] });
+    routeSegments.push({ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [], collapsed: false });
     activeSegmentIndex = 0;
   }
 
@@ -273,7 +287,7 @@ function clearRoute() {
   segmentPolylines = [];
 
   const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
-  routeSegments = [{ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [] }];
+  routeSegments = [{ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [], collapsed: false }];
   activeSegmentIndex = 0;
   updateRouteVector();
   renderWaypointList();
@@ -364,12 +378,14 @@ function renderWaypointList() {
 
   routeSegments.forEach((seg, sIdx) => {
     const isActive = (sIdx === activeSegmentIndex);
+    const isCollapsed = !!seg.collapsed;
     const segColor = SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length];
 
     html += `
       <div class="segment-group-card ${isActive ? 'active' : ''}" style="border-left: 4px solid ${segColor};">
         <div class="segment-header-bar ${isActive ? 'active' : ''}" onclick="setActiveSegment(${sIdx})">
           <span class="segment-title" style="color: ${segColor};">
+            <span class="collapse-toggle" onclick="event.stopPropagation(); toggleSegmentCollapse(${sIdx}, event)" title="${isCollapsed ? 'Expand Segment' : 'Collapse Segment'}">${isCollapsed ? '▶' : '▼'}</span>
             <span class="seg-color-indicator" style="background-color: ${segColor}; box-shadow: 0 0 8px ${segColor};"></span>
             Segment ${sIdx + 1} (${seg.cruiseAlt} ft) ${isActive ? '🟢 Active' : ''}
           </span>
@@ -378,7 +394,7 @@ function renderWaypointList() {
             ${routeSegments.length > 1 ? `<button class="btn-icon" onclick="event.stopPropagation(); removeSegment(${sIdx})" title="Remove Segment">🗑️</button>` : ''}
           </div>
         </div>
-        <div class="segment-waypoints-container">
+        <div class="segment-waypoints-container ${isCollapsed ? 'collapsed' : ''}">
     `;
 
     if (seg.waypoints.length === 0) {
@@ -393,7 +409,7 @@ function renderWaypointList() {
         html += `
           <div class="waypoint-item ${isSharedFromPrev ? 'shared-boundary' : ''}" data-id="${wp.id}">
             <span class="waypoint-index" style="background-color: ${segColor}; color: #0b0f19;">${isSharedFromPrev ? '🔗' : globalCount}</span>
-            <span class="waypoint-name">${wp.name} ${isSharedFromPrev ? '<small style="color: var(--text-muted); font-size: 10px;">(From Seg ' + sIdx + ')</small>' : ''}</span>
+            <span class="waypoint-name" title="${wp.name}">${wp.name} ${isSharedFromPrev ? '<small style="color: var(--text-muted); font-size: 10px;">(From Seg ' + sIdx + ')</small>' : ''}</span>
             <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
             <span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>
           </div>

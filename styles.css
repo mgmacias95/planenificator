@@ -206,8 +206,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 250px;
-  overflow-y: auto;
+  max-height: none;
 }
 
 .waypoint-item {
@@ -215,48 +214,67 @@ body {
   align-items: center;
   background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
-  padding: 10px 14px;
+  padding: 6px 10px;
   border-radius: 6px;
-  gap: 12px;
-  font-size: 13px;
-  transition: border-color 0.2s;
+  gap: 8px;
+  font-size: 12px;
+  transition: border-color 0.2s, background-color 0.2s;
+  min-height: 36px;
 }
 
 .waypoint-item:hover {
   border-color: rgba(0, 240, 255, 0.4);
+  background-color: rgba(0, 240, 255, 0.05);
+}
+
+.waypoint-item.shared-boundary {
+  background-color: rgba(0, 240, 255, 0.03);
+  border-style: dashed;
+  border-color: rgba(0, 240, 255, 0.25);
 }
 
 .waypoint-index {
   background-color: var(--color-cyan);
-  color: var(--bg-color);
-  width: 20px;
-  height: 20px;
+  color: #0b0f19;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 .waypoint-name {
-  flex-grow: 1;
-  font-weight: 400;
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 12px;
 }
 
 .waypoint-coords {
   font-size: 11px;
   color: var(--text-muted);
   font-family: monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
 }
 
 .waypoint-remove {
   color: var(--text-muted);
   cursor: pointer;
+  flex-shrink: 0;
+  padding: 2px 4px;
+  font-size: 13px;
+  font-weight: bold;
+  transition: color 0.15s;
 }
 
 .waypoint-remove:hover {
@@ -778,11 +796,12 @@ body {
 
 /* Route Segment Groups in Sidebar */
 .segment-group-card {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background-color: rgba(255, 255, 255, 0.02);
   overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .segment-group-card.active {
@@ -800,6 +819,8 @@ body {
   font-size: 12px;
   color: var(--color-cyan);
   cursor: pointer;
+  user-select: none;
+  gap: 8px;
 }
 
 .segment-group-card.active .segment-header-bar {
@@ -811,6 +832,25 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.collapse-toggle {
+  font-size: 10px;
+  opacity: 0.8;
+  display: inline-block;
+  transition: transform 0.15s ease;
+  cursor: pointer;
+  padding: 2px;
+  width: 14px;
+  text-align: center;
+  user-select: none;
+}
+
+.collapse-toggle:hover {
+  opacity: 1;
+  color: var(--text-primary);
 }
 
 .seg-color-indicator {
@@ -818,15 +858,15 @@ body {
   height: 10px;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 4px;
+  margin-right: 2px;
   flex-shrink: 0;
 }
-
 
 .segment-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .segment-actions .btn-icon {
@@ -836,10 +876,13 @@ body {
   font-size: 12px;
   color: var(--text-secondary);
   transition: color 0.2s;
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 .segment-actions .btn-icon:hover {
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .segment-waypoints-container {
@@ -847,8 +890,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 180px;
-  overflow-y: auto;
+  max-height: none;
+  transition: all 0.2s ease;
+}
+
+.segment-waypoints-container.collapsed {
+  display: none;
 }
 
 /* Custom Modal Overlay & Card */
