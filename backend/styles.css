@@ -796,11 +796,12 @@ body {
 
 /* Route Segment Groups in Sidebar */
 .segment-group-card {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background-color: rgba(255, 255, 255, 0.02);
   overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .segment-group-card.active {
@@ -818,6 +819,8 @@ body {
   font-size: 12px;
   color: var(--color-cyan);
   cursor: pointer;
+  user-select: none;
+  gap: 8px;
 }
 
 .segment-group-card.active .segment-header-bar {
@@ -829,6 +832,25 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.collapse-toggle {
+  font-size: 10px;
+  opacity: 0.8;
+  display: inline-block;
+  transition: transform 0.15s ease;
+  cursor: pointer;
+  padding: 2px;
+  width: 14px;
+  text-align: center;
+  user-select: none;
+}
+
+.collapse-toggle:hover {
+  opacity: 1;
+  color: var(--text-primary);
 }
 
 .seg-color-indicator {
@@ -836,15 +858,15 @@ body {
   height: 10px;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 4px;
+  margin-right: 2px;
   flex-shrink: 0;
 }
-
 
 .segment-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .segment-actions .btn-icon {
@@ -854,10 +876,13 @@ body {
   font-size: 12px;
   color: var(--text-secondary);
   transition: color 0.2s;
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 .segment-actions .btn-icon:hover {
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .segment-waypoints-container {
@@ -865,8 +890,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 180px;
-  overflow-y: auto;
+  max-height: none;
+  transition: all 0.2s ease;
+}
+
+.segment-waypoints-container.collapsed {
+  display: none;
 }
 
 /* Custom Modal Overlay & Card */
