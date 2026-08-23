@@ -195,8 +195,18 @@ function promptEditSegmentAlt(index) {
 }
 
 
+function isSegmentLocked(sIdx) {
+  for (let i = sIdx + 1; i < routeSegments.length; i++) {
+    if (routeSegments[i].waypoints.length > 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function removeSegment(index) {
   if (routeSegments.length <= 1) return;
+  if (index < routeSegments.length - 1) return;
   const removedSeg = routeSegments.splice(index, 1)[0];
   
   // Remove markers for waypoints unique to this segment
@@ -221,6 +231,14 @@ async function addWaypoint(lat, lon, name = null) {
     const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
     routeSegments.push({ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [], collapsed: false });
     activeSegmentIndex = 0;
+  }
+
+  // Prevent bifurcations: redirect waypoint to latest segment if active segment is locked
+  if (isSegmentLocked(activeSegmentIndex)) {
+    activeSegmentIndex = routeSegments.length - 1;
+    routeSegments.forEach((s, i) => {
+      s.collapsed = (i !== activeSegmentIndex);
+    });
   }
 
   const activeSeg = routeSegments[activeSegmentIndex];
@@ -263,6 +281,9 @@ async function addWaypoint(lat, lon, name = null) {
 }
 
 function removeWaypoint(wpId) {
+  const targetSegIdx = routeSegments.findIndex(seg => seg.waypoints.some(wp => wp.id === wpId));
+  if (targetSegIdx !== -1 && isSegmentLocked(targetSegIdx)) return;
+
   routeSegments.forEach(seg => {
     const idx = seg.waypoints.findIndex(wp => wp.id === wpId);
     if (idx !== -1) {
@@ -379,6 +400,7 @@ function renderWaypointList() {
   routeSegments.forEach((seg, sIdx) => {
     const isActive = (sIdx === activeSegmentIndex);
     const isCollapsed = !!seg.collapsed;
+    const isLocked = isSegmentLocked(sIdx);
     const segColor = SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length];
 
     html += `
@@ -387,11 +409,11 @@ function renderWaypointList() {
           <span class="segment-title" style="color: ${segColor};">
             <span class="collapse-toggle" onclick="event.stopPropagation(); toggleSegmentCollapse(${sIdx}, event)" title="${isCollapsed ? 'Expand Segment' : 'Collapse Segment'}">${isCollapsed ? '▶' : '▼'}</span>
             <span class="seg-color-indicator" style="background-color: ${segColor}; box-shadow: 0 0 8px ${segColor};"></span>
-            Segment ${sIdx + 1} (${seg.cruiseAlt} ft) ${isActive ? '🟢 Active' : ''}
+            Segment ${sIdx + 1} (${seg.cruiseAlt} ft) ${isLocked ? '<span style="font-size: 11px; margin-left: 4px;" title="Locked previous segment: route continues in subsequent segments">🔒</span>' : ''}
           </span>
           <div class="segment-actions">
             <button class="btn-icon" onclick="event.stopPropagation(); promptEditSegmentAlt(${sIdx})" title="Edit Cruise Alt">✏️</button>
-            ${routeSegments.length > 1 ? `<button class="btn-icon" onclick="event.stopPropagation(); removeSegment(${sIdx})" title="Remove Segment">🗑️</button>` : ''}
+            ${(routeSegments.length > 1 && sIdx === routeSegments.length - 1) ? `<button class="btn-icon" onclick="event.stopPropagation(); removeSegment(${sIdx})" title="Remove Segment">🗑️</button>` : ''}
           </div>
         </div>
         <div class="segment-waypoints-container ${isCollapsed ? 'collapsed' : ''}">
@@ -411,7 +433,7 @@ function renderWaypointList() {
             <span class="waypoint-index" style="background-color: ${segColor}; color: #0b0f19;">${isSharedFromPrev ? '🔗' : globalCount}</span>
             <span class="waypoint-name" title="${wp.name}">${wp.name} ${isSharedFromPrev ? '<small style="color: var(--text-muted); font-size: 10px;">(From Seg ' + sIdx + ')</small>' : ''}</span>
             <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
-            <span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>
+            ${!isLocked ? `<span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>` : '<span style="font-size: 11px; opacity: 0.6; padding: 2px;" title="Waypoints in previous segments are locked">🔒</span>'}
           </div>
         `;
       });
