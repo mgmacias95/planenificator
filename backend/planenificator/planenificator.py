@@ -46,17 +46,12 @@ def generate_navigation_report(
     logging.warning('No coordinates found.')
     return None
 
+  coords = [(p[0], p[1]) for p in route_points]
+  point_names = [
+      p[2] if p[2] else osm.get_osm_landmark(p[0], p[1])
+      for p in route_points
+  ]
   start_time = flight_start_date
-
-  logging.info(
-      'Processing %d points. This will take at least %d seconds...',
-      len(coords), len(coords)
-  )
-  point_names = []
-  for i, (lat, lon) in enumerate(coords):
-    name = osm.get_osm_landmark(lat, lon)
-    point_names.append(name)
-    time.sleep(1)
 
   table = []
 
