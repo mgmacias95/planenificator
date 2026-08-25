@@ -174,8 +174,7 @@
 
 					<!-- Aviation Raw NOTAM text -->
 					<p
-						class="line-clamp-3 rounded-md border border-slate-800/80 bg-slate-950/70 p-2 font-mono text-[11px] leading-relaxed tracking-wide text-slate-400 transition-all hover:line-clamp-none"
-						title="Click / hover to expand full NOTAM text"
+						class="rounded-md border border-slate-800/80 bg-slate-950/70 p-2 font-mono text-[11px] leading-relaxed tracking-wide text-slate-400 whitespace-pre-wrap break-words"
 					>
 						{notam.text}
 					</p>
