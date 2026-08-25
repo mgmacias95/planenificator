@@ -103,7 +103,7 @@
 	{:else if name === 'zap'}
 		<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
 	{:else if name === 'loader'}
-		<g class="animate-spin origin-center">
+		<g class="origin-center animate-spin">
 			<line x1="12" y1="2" x2="12" y2="6" />
 			<line x1="12" y1="18" x2="12" y2="22" />
 			<line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />

@@ -1,5 +1,6 @@
 import type { Waypoint, RouteSegment, FlightProfile, SavedFlightPlan } from '$lib/types/flight';
 import { flightPlanStorage } from '$lib/services/storage';
+import { aircraftProfilesStore } from '$lib/state/aircraft-profiles.svelte';
 
 export const SEGMENT_COLORS = [
 	'#00f0ff', // Cyan
@@ -30,10 +31,42 @@ export class FlightPlanState {
 		climbRateFpm: 700,
 		descentRateFpm: 500
 	});
+	aircraftProfileId = $state<string>('lsa');
 	activePlanId = $state<string | null>(null);
 	activePlanName = $state<string>('Untitled Flight Plan');
 
+	private cleanSnapshot: string | null = null;
 	private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+	private serializeForDiff(): string {
+		const normalizedSegments = this.segments.map((s) => ({
+			id: s.id,
+			cruiseAlt: s.cruiseAlt,
+			waypointIds: s.waypointIds,
+			color: s.color
+		}));
+
+		return JSON.stringify({
+			waypoints: this.waypoints,
+			segments: normalizedSegments,
+			profile: this.profile,
+			aircraftProfileId: this.aircraftProfileId || aircraftProfilesStore.selectedProfileId
+		});
+	}
+
+	takeCleanSnapshot(): void {
+		this.cleanSnapshot = this.serializeForDiff();
+	}
+
+	hasUnsavedChanges(): boolean {
+		if (!this.cleanSnapshot) {
+			return (
+				this.waypoints.length > 0 || Boolean(this.profile.depIcao) || Boolean(this.profile.destIcao)
+			);
+		}
+
+		return this.serializeForDiff() !== this.cleanSnapshot;
+	}
 
 	constructor() {
 		// Initial segment setup
@@ -50,7 +83,7 @@ export class FlightPlanState {
 
 	async persistActiveSession(): Promise<void> {
 		try {
-			const plan = this.exportAsSavedPlan(this.activePlanName);
+			const plan = this.exportAsSavedPlan(this.activePlanName, this.activePlanId || undefined);
 			await flightPlanStorage.saveActiveSession(plan);
 		} catch (e) {
 			console.warn('Auto-save active session failed:', e);
@@ -201,6 +234,9 @@ export class FlightPlanState {
 			{ id: 'seg_1', cruiseAlt: 5500, waypointIds: [], collapsed: false, color: SEGMENT_COLORS[0] }
 		];
 		this.activeSegmentIndex = 0;
+		this.activePlanId = null;
+		this.activePlanName = 'Untitled Flight Plan';
+		this.cleanSnapshot = null;
 		this.scheduleAutoSave();
 	}
 
@@ -214,17 +250,21 @@ export class FlightPlanState {
 		this.activePlanId = plan.id;
 		this.activePlanName = plan.name;
 		this.activeSegmentIndex = 0;
+		this.aircraftProfileId = plan.aircraftProfileId || 'lsa';
+		aircraftProfilesStore.applySavedAircraftProfile(plan.aircraftProfileId);
+		this.takeCleanSnapshot();
 	}
 
-	exportAsSavedPlan(name: string): SavedFlightPlan {
+	exportAsSavedPlan(name: string, planId?: string): SavedFlightPlan {
 		return {
-			id: this.activePlanId || `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+			id: planId || `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
 			name,
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
 			waypoints: JSON.parse(JSON.stringify(this.waypoints)),
 			segments: JSON.parse(JSON.stringify(this.segments)),
-			profile: JSON.parse(JSON.stringify(this.profile))
+			profile: JSON.parse(JSON.stringify(this.profile)),
+			aircraftProfileId: this.aircraftProfileId || aircraftProfilesStore.selectedProfileId || 'lsa'
 		};
 	}
 }

@@ -66,7 +66,8 @@ export default defineConfig({
 			},
 			adapter: adapter({ fallback: 'index.html', strict: false }),
 			paths: {
-				base: (process.argv.includes('dev') ? '' : (process.env.BASE_PATH ?? '')) as '' | `/${string}`
+				base: (process.argv.includes('dev') ? '' : (process.env.BASE_PATH ?? '')) as
+					'' | `/${string}`
 			}
 		}),
 

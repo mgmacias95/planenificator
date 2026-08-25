@@ -92,4 +92,3 @@ describe('Navigation Log Calculation and Formatting', () => {
 		expect(leg1.toName).toBe('Guadalajara');
 	});
 });
-

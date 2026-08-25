@@ -113,7 +113,7 @@
 				type="button"
 				onclick={handleLoadCatalogChart}
 				disabled={!selectedCatalogId || chartStore.isLoadingChart}
-				class="flex items-center justify-center shrink-0 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500"
+				class="flex shrink-0 items-center justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500"
 			>
 				{#if chartStore.isLoadingChart}
 					<Icon name="loader" class="h-4 w-4" />

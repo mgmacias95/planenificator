@@ -5,7 +5,7 @@
 	"tab_route": "Route",
 	"tab_charts": "Charts",
 	"tab_safety": "Safety",
-	"tab_projects": "Projects",
+	"tab_projects": "Plans",
 	"btn_calculate": "Calculate Route",
 	"btn_calculating": "Calculating...",
 	"btn_print": "Print",
@@ -51,7 +51,7 @@
 	"charts_dropzone": "Drop ENAIRE VFR ZIP or GeoTIFF + TFW",
 	"charts_active": "Active Overlays",
 	"projects_title": "Saved Flight Plans",
-	"projects_save_label": "Save Current Flight Plan Project",
+	"projects_save_label": "Create New Plan",
 	"projects_empty": "No saved flight plans in IndexedDB storage yet.",
 	"loading_title": "Calculating Route",
 	"loading_subtitle": "Computing operational flight plan, weather aloft, and airspace NOTAMs...",
@@ -72,5 +72,9 @@
 	"profile_delete_btn": "Delete Profile",
 	"profile_delete_confirm": "Delete custom profile \"{name}\"?",
 	"profile_save_as_new": "Save as New Profile",
-	"profile_update_saved": "Update Profile"
+	"profile_update_saved": "Update Profile",
+	"confirm_load_title": "Load Flight Plan?",
+	"confirm_load_message": "Loading \"{name}\" will replace your current route. Any unsaved changes will be lost.",
+	"btn_cancel": "Cancel",
+	"btn_confirm_load": "Load Plan"
 }

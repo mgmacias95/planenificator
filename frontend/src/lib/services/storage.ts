@@ -25,7 +25,9 @@ export class FlightPlanStorageService {
 						savedStore.createIndex('by_updatedAt', 'updatedAt');
 					}
 					if (!db.objectStoreNames.contains(StoreNames.AIRCRAFT_PROFILES)) {
-						const profileStore = db.createObjectStore(StoreNames.AIRCRAFT_PROFILES, { keyPath: 'id' });
+						const profileStore = db.createObjectStore(StoreNames.AIRCRAFT_PROFILES, {
+							keyPath: 'id'
+						});
 						profileStore.createIndex('by_updatedAt', 'updatedAt');
 					}
 				}

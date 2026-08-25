@@ -5,7 +5,7 @@
 	"tab_route": "Ruta",
 	"tab_charts": "Cartas",
 	"tab_safety": "Seguridad",
-	"tab_projects": "Proyectos",
+	"tab_projects": "Planes",
 	"btn_calculate": "Calcular Ruta",
 	"btn_calculating": "Calculando...",
 	"btn_print": "Imprimir",
@@ -51,7 +51,7 @@
 	"charts_dropzone": "Arrastra ZIP VFR ENAIRE o GeoTIFF + TFW",
 	"charts_active": "Capas Activas",
 	"projects_title": "Planes de Vuelo Guardados",
-	"projects_save_label": "Guardar Proyecto Actual",
+	"projects_save_label": "Crear Nuevo Plan",
 	"projects_empty": "Aún no hay planes guardados en IndexedDB.",
 	"loading_title": "Calculando Ruta",
 	"loading_subtitle": "Calculando plan de vuelo operacional, meteorología en altura y NOTAMs...",
@@ -72,5 +72,9 @@
 	"profile_delete_btn": "Eliminar Perfil",
 	"profile_delete_confirm": "¿Eliminar el perfil personalizado \"{name}\"?",
 	"profile_save_as_new": "Guardar como Nuevo Perfil",
-	"profile_update_saved": "Actualizar Perfil"
+	"profile_update_saved": "Actualizar Perfil",
+	"confirm_load_title": "¿Cargar Plan de Vuelo?",
+	"confirm_load_message": "Cargar \"{name}\" reemplazará tu ruta actual. Se perderán los cambios no guardados.",
+	"btn_cancel": "Cancelar",
+	"btn_confirm_load": "Cargar Plan"
 }
