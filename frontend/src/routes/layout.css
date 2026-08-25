@@ -73,17 +73,6 @@ body {
 	border: 1px solid #334155 !important;
 }
 
-/* Leaflet attribution – invert & dim so white pill blends into dark HUD */
-.leaflet-control-attribution {
-	filter: invert(90%) hue-rotate(180deg);
-	opacity: 0.6;
-	transition: opacity 0.2s ease;
-}
-
-.leaflet-control-attribution:hover {
-	opacity: 0.85;
-}
-
 /* Print Styles */
 @media print {
 	body {
@@ -106,34 +95,4 @@ body {
 	.print-only {
 		display: none !important;
 	}
-}
-
-/* ─── Autofill override ──────────────────────────────────────────────────────
- * Browsers hijack the background of autofilled inputs with a hard-to-override
- * yellow/white colour. Using a large inset box-shadow tricks the browser into
- * displaying our dark background while a very long transition-delay prevents
- * the autofill colour from ever flashing in.
- * ────────────────────────────────────────────────────────────────────────── */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:autofill,
-input:autofill:hover,
-input:autofill:focus,
-select:-webkit-autofill,
-select:-webkit-autofill:hover,
-select:-webkit-autofill:focus,
-textarea:-webkit-autofill,
-textarea:-webkit-autofill:hover,
-textarea:-webkit-autofill:focus {
-	/* Use inset shadow to paint the dark background over the autofill colour */
-	-webkit-box-shadow: 0 0 0px 1000px #020617 inset !important;
-	box-shadow: 0 0 0px 1000px #020617 inset !important;
-	/* Keep text colour consistent with the rest of the UI */
-	-webkit-text-fill-color: #ffffff !important;
-	caret-color: #ffffff;
-	/* Delay the transition so the autofill colour never briefly shows */
-	transition:
-		background-color 9999s ease-in-out 0s,
-		color 9999s ease-in-out 0s;
 }

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	interface Props {
@@ -48,16 +47,15 @@
 		>
 			<div class="flex items-center justify-between border-b border-slate-800 pb-3">
 				<h3 class="flex items-center gap-2 text-lg font-semibold text-cyan-400">
-					<Icon name="plane" class="h-5 w-5 text-cyan-400" />
+					<span>✈️</span>
 					<span>{title}</span>
 				</h3>
 				<button
-					type="button"
 					onclick={onCancel}
-					class="p-1 text-slate-400 transition-colors hover:text-white"
+					class="p-1 text-xl font-bold text-slate-400 transition-colors hover:text-white"
 					aria-label="Close"
 				>
-					<Icon name="x" class="h-5 w-5" />
+					✕
 				</button>
 			</div>
 

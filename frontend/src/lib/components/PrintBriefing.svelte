@@ -25,7 +25,7 @@
 		<div>
 			<div class="font-bold text-gray-500">ROUTE</div>
 			<div class="text-sm font-bold">
-				{flightPlanStore.profile.depIcao || 'DEP'} &rarr; {flightPlanStore.profile.destIcao || 'DEST'}
+				{flightPlanStore.profile.depIcao || 'DEP'} ➔ {flightPlanStore.profile.destIcao || 'DEST'}
 			</div>
 		</div>
 

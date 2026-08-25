@@ -6,13 +6,10 @@
 	import PrintBriefing from '$lib/components/PrintBriefing.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
-	import { aircraftProfilesStore } from '$lib/state/aircraft-profiles.svelte';
 	import { pyodideService } from '$lib/services/pyodide.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	onMount(async () => {
-		// Load custom aircraft profiles
-		await aircraftProfilesStore.init();
 		// Restore active session if available
 		await flightPlanStore.restoreActiveSession();
 		// Warm up Pyodide runtime in background

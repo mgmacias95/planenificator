@@ -33,9 +33,6 @@ importers:
       '@inlang/paraglide-js':
         specifier: ^2.18.2
         version: 2.24.1(typescript@6.0.3)(vite@8.2.2(@types/node@24.13.3)(jiti@2.7.0))
-      '@lucide/svelte':
-        specifier: ^1.34.0
-        version: 1.34.0(svelte@5.56.10(@typescript-eslint/types@8.68.0))
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.62.1
@@ -239,11 +236,6 @@ packages:
 
   '@lix-js/sdk@0.12.3':
     resolution: {integrity: sha512-T2194yoZsM2S9kyRmI8UtEJL0fgXYAkeY9jZ/PVyC0K78/wmBvrqOSt9SdvgYxM5qnZ57re3NLOjVlV+X5hWxQ==}
-
-  '@lucide/svelte@1.34.0':
-    resolution: {integrity: sha512-sHFL8KVSaPXv0dsmdUTq4q/tj8clT2XYejnoSg0mHObpXWn/9SfET4f14v/7VOba1IsbPIW9+sWaq+Qq1wTdNA==}
-    peerDependencies:
-      svelte: ^5
 
   '@oxc-project/types@0.146.0':
     resolution: {integrity: sha512-XC0QsnnhVe7sLIWmYmdPw7x5P0h4W8vUU3Nv1ySgWXtvCz8NizoAEpGXA0sOYoJQV2Rl13LgURAHQ5cI5ILCSA==}
@@ -1774,10 +1766,6 @@ snapshots:
       '@lix-js/sdk-linux-arm64': 0.12.3
       '@lix-js/sdk-linux-x64': 0.12.3
       '@lix-js/sdk-win32-x64': 0.12.3
-
-  '@lucide/svelte@1.34.0(svelte@5.56.10(@typescript-eslint/types@8.68.0))':
-    dependencies:
-      svelte: 5.56.10(@typescript-eslint/types@8.68.0)
 
   '@oxc-project/types@0.146.0': {}
 

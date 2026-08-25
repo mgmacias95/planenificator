@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { chartStore } from '$lib/state/charts.svelte';
 	import { chartGeoreferencer } from '$lib/services/georef';
-	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let isDragging = $state<boolean>(false);
@@ -17,42 +16,37 @@
 		const fileArr = Array.from(files);
 		if (fileArr.length === 0) return;
 
-		chartStore.isLoadingChart = true;
-		chartStore.errorMessage = null;
-
-		try {
-			// 1. Process ZIP archives
-			for (const file of fileArr) {
-				if (file.name.toLowerCase().endsWith('.zip')) {
-					try {
-						const arrayBuffer = await file.arrayBuffer();
-						const { tiffBuffer, tfwText } = await chartGeoreferencer.unpackZipChart(arrayBuffer);
-						const overlay = await chartGeoreferencer.processRasterChart(
-							file.name,
-							tiffBuffer,
-							tfwText
-						);
-						chartStore.addChart(overlay);
-					} catch (err: any) {
-						chartStore.errorMessage = `Error reading ZIP chart: ${err?.message || err}`;
-					}
+		for (const file of fileArr) {
+			if (file.name.toLowerCase().endsWith('.zip')) {
+				try {
+					const arrayBuffer = await file.arrayBuffer();
+					const { tiffBuffer, tfwText } = await chartGeoreferencer.unpackZipChart(arrayBuffer);
+					const overlay = await chartGeoreferencer.processRasterChart(
+						file.name,
+						tiffBuffer,
+						tfwText
+					);
+					chartStore.addChart(overlay);
+				} catch (err: any) {
+					alert(`Error reading ZIP chart: ${err?.message || err}`);
 				}
 			}
+		}
 
-			// 2. Process TIF/TIFF files (with matching TFW or standalone GeoTIFF)
-			const tifs = fileArr.filter(
-				(f) => f.name.toLowerCase().endsWith('.tif') || f.name.toLowerCase().endsWith('.tiff')
+		const tifs = fileArr.filter(
+			(f) => f.name.toLowerCase().endsWith('.tif') || f.name.toLowerCase().endsWith('.tiff')
+		);
+		const tfws = fileArr.filter((f) => f.name.toLowerCase().endsWith('.tfw'));
+
+		for (const tif of tifs) {
+			const base = tif.name.replace(/\.[^/.]+$/, '');
+			const matchTfw = tfws.find(
+				(tfw) => tfw.name.replace(/\.[^/.]+$/, '').toLowerCase() === base.toLowerCase()
 			);
-			const tfws = fileArr.filter((f) => f.name.toLowerCase().endsWith('.tfw'));
-
-			for (const tif of tifs) {
-				const base = tif.name.replace(/\.[^/.]+$/, '');
-				const matchTfw = tfws.find(
-					(tfw) => tfw.name.replace(/\.[^/.]+$/, '').toLowerCase() === base.toLowerCase()
-				);
+			if (matchTfw) {
 				try {
 					const tiffBuffer = await tif.arrayBuffer();
-					const tfwText = matchTfw ? await matchTfw.text() : '';
+					const tfwText = await matchTfw.text();
 					const overlay = await chartGeoreferencer.processRasterChart(
 						tif.name,
 						tiffBuffer,
@@ -60,11 +54,9 @@
 					);
 					chartStore.addChart(overlay);
 				} catch (err: any) {
-					chartStore.errorMessage = `Error reading chart: ${err?.message || err}`;
+					alert(`Error reading chart pair: ${err?.message || err}`);
 				}
 			}
-		} finally {
-			chartStore.isLoadingChart = false;
 		}
 	}
 
@@ -84,7 +76,7 @@
 		<h3
 			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-300 uppercase"
 		>
-			<Icon name="map-pin" class="h-3.5 w-3.5 text-cyan-400" />
+			<span>🗺️</span>
 			<span>{m.charts_title()}</span>
 		</h3>
 		<span class="font-mono text-[11px] text-slate-400">
@@ -120,10 +112,10 @@
 				type="button"
 				onclick={handleLoadCatalogChart}
 				disabled={!selectedCatalogId || chartStore.isLoadingChart}
-				class="flex shrink-0 items-center justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500"
+				class="shrink-0 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500"
 			>
 				{#if chartStore.isLoadingChart}
-					<Icon name="loader" class="h-4 w-4" />
+					<span class="inline-block animate-spin">⏳</span>
 				{:else}
 					{m.btn_load()}
 				{/if}
@@ -168,9 +160,7 @@
 				}
 			}}
 		/>
-		<div class="mb-1 flex justify-center text-cyan-400">
-			<Icon name="plus" class="h-5 w-5" />
-		</div>
+		<div class="mb-1 text-xl">📥</div>
 		<div class="text-xs font-medium text-slate-300">{m.charts_dropzone()}</div>
 		<div class="mt-0.5 text-[10px] text-slate-500">
 			Supports automatic Lambert Conformal Conic georeferencing
@@ -202,10 +192,10 @@
 						<button
 							type="button"
 							onclick={() => chartStore.removeChart(chart.id)}
-							class="ml-2 shrink-0 p-1 text-slate-500 transition-colors hover:text-rose-400"
+							class="ml-2 shrink-0 p-1 text-xs text-slate-500 transition-colors hover:text-rose-400"
 							title="Unload Chart"
 						>
-							<Icon name="x" class="h-3.5 w-3.5" />
+							✕
 						</button>
 					</div>
 

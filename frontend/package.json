@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "node scripts/sync-python.js && vite dev",
+		"dev": "vite dev",
 		"sync:python": "node scripts/sync-python.js",
 		"build:gazetteer": "node scripts/build-gazetteer.js",
 		"build": "node scripts/sync-python.js && vite build",
@@ -21,7 +21,6 @@
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@inlang/paraglide-js": "^2.18.2",
-		"@lucide/svelte": "^1.34.0",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.63.0",

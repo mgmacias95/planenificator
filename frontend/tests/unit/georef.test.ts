@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
 import { ChartGeoreferencer } from '$lib/services/georef';
-
-const realChartFixture = '/home/wocat/2026_LE5_CENTROSUR.zip';
 
 describe('Chart Georeferencer & World File Parser', () => {
 	const georef = new ChartGeoreferencer();
@@ -36,13 +33,6 @@ describe('Chart Georeferencer & World File Parser', () => {
 		// Origin for ENAIRE:LE is lat_0=40, lon_0=-4
 		expect(lat).toBeCloseTo(40, 1);
 		expect(lng).toBeCloseTo(-4, 1);
-	});
-
-	it('should accurately project Canary Islands LCC coordinates', () => {
-		// Canary Islands center LCC origin: lat_0=26, lon_0=-17
-		const { lat, lng } = georef.projectToWgs84(0, 0, true);
-		expect(lat).toBeCloseTo(26, 1);
-		expect(lng).toBeCloseTo(-17, 1);
 	});
 
 	it('should provide fallback ENAIRE catalog items when network unavailable', async () => {
@@ -81,24 +71,4 @@ describe('Chart Georeferencer & World File Parser', () => {
 		store.removeChart('test_chart_1');
 		expect(store.loadedCharts.length).toBe(0);
 	});
-
-	it.runIf(existsSync(realChartFixture))(
-		'should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present',
-		async () => {
-			const buf = readFileSync(realChartFixture).buffer;
-	it('should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present', async () => {
-		const fs = await import('node:fs');
-		const zipPath = '/home/wocat/2026_LE5_CENTROSUR.zip';
-		if (fs.existsSync(zipPath)) {
-			const buf = fs.readFileSync(zipPath).buffer;
-			const { tiffBuffer, tfwText, filename } = await georef.unpackZipChart(buf);
-			expect(tiffBuffer.byteLength).toBeGreaterThan(0);
-			expect(filename).toBe('2026_LE5_CENTROSUR');
-			expect(tfwText).toBeTruthy();
-
-			const metrics = georef.parseWorldFile(tfwText);
-			expect(metrics.pixelScaleX).toBeCloseTo(42.33, 1);
-			expect(metrics.pixelScaleY).toBeCloseTo(-42.33, 1);
-		}
-	);
 });

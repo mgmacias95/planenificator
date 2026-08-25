@@ -53,72 +53,6 @@ export interface IPyodideService {
 	calculateRoute(input: PyodideCalculationInput): Promise<PyodideCalculationResult>;
 }
 
-function escapeXml(str: string): string {
-	return str
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&apos;');
-}
-
-export function parseAltitudeLimit(val: any): { fl: string; ft: number | null } {
-	if (val === undefined || val === null || val === '') return { fl: 'SFC', ft: 0 };
-	if (typeof val === 'string') {
-		val = val.trim().toUpperCase();
-		if (val === 'SFC' || val === 'GND') return { fl: 'SFC', ft: 0 };
-		if (val === 'UNL' || val === 'UNLIMITED') return { fl: 'UNL', ft: null };
-		if (val.startsWith('FL')) {
-			const num = parseInt(val.replace('FL', ''), 10);
-			if (!isNaN(num)) {
-				return { fl: `FL${String(num).padStart(3, '0')}`, ft: num * 100 };
-			}
-		}
-		const parsed = parseFloat(val);
-		if (isNaN(parsed)) return { fl: val, ft: null };
-		val = parsed;
-	}
-
-	if (val === 0) return { fl: 'SFC', ft: 0 };
-	if (val === 999 || val >= 99900) return { fl: 'UNL', ft: null };
-
-	if (val < 1000) {
-		const flNum = Math.round(val);
-		return {
-			fl: `FL${String(flNum).padStart(3, '0')}`,
-			ft: flNum * 100
-		};
-	}
-
-	const ftNum = Math.round(val);
-	const flNum = Math.round(val / 100);
-	return {
-		fl: `FL${String(flNum).padStart(3, '0')}`,
-		ft: ftNum
-	};
-}
-
-export function formatNotamAltitudeRange(lower: any, upper: any): string {
-	const low = parseAltitudeLimit(lower);
-	const up = parseAltitudeLimit(upper);
-
-	if (low.fl === 'SFC' && up.fl === 'UNL') {
-		return 'SFC – UNL';
-	}
-
-	const lowFtStr = low.ft !== null ? `${low.ft.toLocaleString('en-US')} ft` : '';
-	const upFtStr = up.ft !== null ? `${up.ft.toLocaleString('en-US')} ft` : 'UNL';
-
-	if (low.fl === 'SFC') {
-		return `${low.fl} – ${up.fl} (0 – ${upFtStr})`;
-	}
-	if (up.fl === 'UNL') {
-		return `${low.fl} – UNL (${lowFtStr} – UNL)`;
-	}
-
-	return `${low.fl} – ${up.fl} (${low.ft?.toLocaleString('en-US')} – ${up.ft?.toLocaleString('en-US')} ft)`;
-}
-
 export class PyodideService implements IPyodideService {
 	private pyodide: PyodideInterface | null = null;
 
@@ -137,11 +71,11 @@ export class PyodideService implements IPyodideService {
 			try {
 				this.status = {
 					state: 'loading_wasm',
-					progressMessage: 'Initializing flight engine...'
+					progressMessage: 'Loading WebAssembly Python runtime...'
 				};
 
 				if (typeof window === 'undefined' || typeof window.loadPyodide !== 'function') {
-					throw new Error('Flight engine failed to load in browser');
+					throw new Error('Pyodide script is not loaded in window');
 				}
 
 				// Load Pyodide WASM runtime from official CDN distribution
@@ -151,7 +85,7 @@ export class PyodideService implements IPyodideService {
 
 				this.status = {
 					state: 'installing_packages',
-					progressMessage: 'Loading aviation calculation modules...'
+					progressMessage: 'Installing aviation & math packages...'
 				};
 
 				await this.pyodide.loadPackage(['ssl', 'micropip', 'requests', 'pyodide-http']);
@@ -160,7 +94,7 @@ export class PyodideService implements IPyodideService {
 
 				this.status = {
 					state: 'loading_modules',
-					progressMessage: 'Loading flight planning tools...'
+					progressMessage: 'Mounting Planenificator modules...'
 				};
 
 				try {
@@ -185,7 +119,7 @@ export class PyodideService implements IPyodideService {
 						cache: 'no-store'
 					});
 					if (!response.ok) {
-						throw new Error(`Failed to load navigation module ${file} (HTTP ${response.status})`);
+						throw new Error(`Failed to load static module ${file} (HTTP ${response.status})`);
 					}
 					const code = await response.text();
 					this.pyodide.FS.writeFile(`planenificator/${file}`, code);
@@ -199,13 +133,13 @@ export class PyodideService implements IPyodideService {
 
 				this.status = {
 					state: 'ready',
-					progressMessage: 'Flight Engine Ready'
+					progressMessage: 'Engine Ready (Client-Side WASM)'
 				};
 			} catch (err: any) {
 				console.error('Pyodide initialization failed:', err);
 				this.status = {
 					state: 'error',
-					progressMessage: 'Failed to initialize flight engine',
+					progressMessage: 'Failed to load Python WASM runtime',
 					error: err?.message || String(err)
 				};
 				throw err;
@@ -227,7 +161,7 @@ export class PyodideService implements IPyodideService {
 		if (!this.isReady() || !this.pyodide) {
 			await this.init();
 			if (!this.pyodide) {
-				throw new Error('Flight planning engine is not ready');
+				throw new Error('Pyodide engine is not initialized');
 			}
 		}
 
@@ -246,24 +180,11 @@ export class PyodideService implements IPyodideService {
 			if (segWps.length >= 2) {
 				const kmlFileName = `segment_${idx + 1}.kml`;
 				const coordsStr = segWps.map((wp: Waypoint) => `${wp.lng},${wp.lat},0`).join(' ');
-				const placemarksXml = segWps
-					.map(
-						(wp: Waypoint) => `    <Placemark>
-      <name>${escapeXml(wp.name || `Waypoint_${wp.lat.toFixed(3)}_${wp.lng.toFixed(3)}`)}</name>
-      <Point>
-        <coordinates>${wp.lng},${wp.lat},0</coordinates>
-      </Point>
-    </Placemark>`
-					)
-					.join('\n');
-
 				const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Segment ${idx + 1}</name>
-${placemarksXml}
     <Placemark>
-      <name>Segment ${idx + 1} Path</name>
+      <name>Segment ${idx + 1}</name>
       <LineString>
         <coordinates>
           ${coordsStr}
@@ -425,21 +346,17 @@ ${placemarksXml}
 
 		// Route conflict NOTAMs
 		(notamData.route_conflicts || []).forEach((c: any) => {
-			const low = parseAltitudeLimit(c.LOWER_VAL);
-			const up = parseAltitudeLimit(c.UPPER_VAL);
-			const areaName = c.areaSactaName || c.itemA || 'En Route Corridor';
-
 			notams.push({
 				id: c.notamId || 'NOTAM',
-				location: c.areaSactaName || c.itemA || 'EN ROUTE',
+				location: c.areaSactaName || 'EN ROUTE',
 				validFrom: c.itemB ? new Date(c.itemB).toISOString() : '',
 				validTo: c.itemC ? new Date(c.itemC).toISOString() : '',
 				qCode: c.qcode || '',
 				purpose: 'Route Conflict',
-				lowerLimitFt: low.ft ?? undefined,
-				upperLimitFt: up.ft ?? undefined,
+				lowerLimitFt: c.LOWER_VAL ? c.LOWER_VAL * 100 : undefined,
+				upperLimitFt: c.UPPER_VAL ? c.UPPER_VAL * 100 : undefined,
 				text: c.itemE || '',
-				summary: `${areaName} Airspace Restriction`,
+				summary: `En Route Conflict FL${c.LOWER_VAL || 0} - FL${c.UPPER_VAL || 'UNL'}`,
 				severity: 'WARNING'
 			});
 		});
@@ -449,23 +366,6 @@ ${placemarksXml}
 			const c = Array.isArray(item) ? item[0] : item;
 			const warnType = Array.isArray(item) && item[1] ? item[1] : 'ALERT';
 			const role = Array.isArray(item) && item[2] ? item[2] : 'AERODROME';
-			const low = parseAltitudeLimit(c.LOWER_VAL);
-			const up = parseAltitudeLimit(c.UPPER_VAL);
-
-			const roleDesc =
-				role === 'DEPARTURE'
-					? 'Departure'
-					: role === 'ARRIVAL'
-						? 'Destination'
-						: role === 'ALTERNATE'
-							? 'Alternate'
-							: role;
-			const statusDesc =
-				warnType === 'CLOSED'
-					? 'Aerodrome Closed'
-					: warnType === 'LIMITED'
-						? 'Operational Limitations'
-						: warnType;
 
 			notams.push({
 				id: c.notamId || 'AD NOTAM',
@@ -474,10 +374,8 @@ ${placemarksXml}
 				validTo: c.itemC ? new Date(c.itemC).toISOString() : '',
 				qCode: c.qcode || '',
 				purpose: `${role} ${warnType}`,
-				lowerLimitFt: low.ft !== null && low.ft > 0 ? low.ft : undefined,
-				upperLimitFt: up.ft !== null && up.ft < 99900 ? up.ft : undefined,
 				text: c.itemE || '',
-				summary: `${c.itemA || 'AD'} (${roleDesc}): ${statusDesc}`,
+				summary: `AD ${c.itemA || ''} [${role}] ${warnType}`,
 				severity: warnType === 'CLOSED' ? 'WARNING' : 'CAUTION'
 			});
 		});

@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { calculationStore } from '$lib/state/calculation.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import Icon from './Icon.svelte';
 
 	interface StepItem {
 		id: string;
 		label: () => string;
-		icon: 'map-pin' | 'cloud' | 'alert-triangle' | 'compass';
+		icon: string;
 		detail: string;
 	}
 
@@ -14,25 +13,25 @@
 		{
 			id: 'route',
 			label: () => m.loading_step_route(),
-			icon: 'map-pin',
-			detail: 'Resolving route coordinates & landmark fixes'
+			icon: '📍',
+			detail: 'Parsing KML coordinates & resolving landmark fixes'
 		},
 		{
 			id: 'weather',
 			label: () => m.loading_step_weather(),
-			icon: 'cloud',
+			icon: '⛅',
 			detail: 'Querying Open-Meteo / ECMWF aloft winds & temperatures'
 		},
 		{
 			id: 'notams',
 			label: () => m.loading_step_notams(),
-			icon: 'alert-triangle',
+			icon: '⚠️',
 			detail: 'Fetching en-route airspace & aerodrome NOTAM restrictions'
 		},
 		{
 			id: 'navlog',
 			label: () => m.loading_step_navlog(),
-			icon: 'compass',
+			icon: '🧭',
 			detail: 'Computing magnetic headings, ground speeds & climb/descent profile'
 		}
 	];
@@ -94,7 +93,7 @@
 						class="absolute inset-0 animate-ping rounded-2xl bg-cyan-500/20 [animation-duration:2.5s]"
 					></div>
 					<!-- Center Icon -->
-					<Icon name="plane" class="h-7 w-7 text-cyan-300 select-none" size={28} />
+					<span class="text-2xl select-none">✈️</span>
 				</div>
 
 				<div class="min-w-0 flex-1">
@@ -138,11 +137,11 @@
 					>
 						<div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
 							{#if isActive}
-								<Icon name="loader" class="h-3.5 w-3.5 text-cyan-400" />
+								<span class="inline-block animate-spin text-xs">⚙️</span>
 							{:else if isPast}
-								<Icon name="check-circle" class="h-3.5 w-3.5 text-emerald-400" />
+								<span class="text-xs text-emerald-400">✓</span>
 							{:else}
-								<Icon name={step.icon} class="h-3.5 w-3.5 text-slate-500 opacity-60" />
+								<span class="text-xs opacity-50">{step.icon}</span>
 							{/if}
 						</div>
 
@@ -169,7 +168,7 @@
 			<div class="mt-4 flex items-center justify-between text-[11px] text-slate-500">
 				<span class="flex items-center gap-1.5 font-mono">
 					<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-					Flight Planning Engine
+					WASM Aviation Engine
 				</span>
 				<span class="font-mono">Open-Meteo & ENAIRE Insignia</span>
 			</div>
