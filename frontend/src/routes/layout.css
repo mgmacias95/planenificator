@@ -73,6 +73,17 @@ body {
 	border: 1px solid #334155 !important;
 }
 
+/* Leaflet attribution – invert & dim so white pill blends into dark HUD */
+.leaflet-control-attribution {
+	filter: invert(90%) hue-rotate(180deg);
+	opacity: 0.6;
+	transition: opacity 0.2s ease;
+}
+
+.leaflet-control-attribution:hover {
+	opacity: 0.85;
+}
+
 /* Print Styles */
 @media print {
 	body {

@@ -110,7 +110,7 @@
 			<button
 				type="button"
 				onclick={() => (isPerformanceExpanded = !isPerformanceExpanded)}
-				class="flex cursor-pointer items-center gap-1 text-[11px] text-cyan-400 transition-colors hover:text-cyan-300"
+				class="flex cursor-pointer items-center gap-1 text-[11px] text-slate-500 transition-colors hover:text-slate-300"
 			>
 				<Icon name={isPerformanceExpanded ? 'chevron-down' : 'chevron-right'} class="h-3 w-3" />
 				<span>{isPerformanceExpanded ? 'Hide Details' : 'Edit Performance'}</span>
@@ -377,7 +377,7 @@
 			<button
 				type="button"
 				onclick={handleResetForm}
-				class="flex cursor-pointer items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-rose-400"
+				class="flex cursor-pointer items-center gap-1 text-[11px] text-slate-500 transition-colors hover:text-rose-400"
 				title="Clear route waypoints and results"
 			>
 				<Icon name="refresh" class="h-3 w-3" />
