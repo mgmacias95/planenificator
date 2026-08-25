@@ -1,77 +1,81 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
 	import { calculationStore } from '$lib/state/calculation.svelte';
+	import { aircraftProfilesStore } from '$lib/state/aircraft-profiles.svelte';
+	import { DEFAULT_AIRCRAFT_PRESETS, type AircraftPerformanceProfile } from '$lib/types/flight';
 	import Icon from './Icon.svelte';
+	import AircraftProfileModal from './AircraftProfileModal.svelte';
 	import * as m from '$lib/paraglide/messages';
 
-	interface AircraftPreset {
-		id: string;
+	let isPerformanceExpanded = $state<boolean>(false);
+	let alternatesInput = $state<string>(flightPlanStore.profile.altIcaos.join(', '));
+
+	let isModalOpen = $state<boolean>(false);
+	let modalMode = $state<'create' | 'edit'>('create');
+	let modalInitialData = $state<Partial<AircraftPerformanceProfile>>({});
+
+	onMount(() => {
+		aircraftProfilesStore.init();
+	});
+
+	function handlePresetChange(e: Event) {
+		const select = e.target as HTMLSelectElement;
+		aircraftProfilesStore.selectProfile(select.value);
+	}
+
+	function handleCreateNewProfile() {
+		modalMode = 'create';
+		modalInitialData = {
+			name: '',
+			cruiseTas: flightPlanStore.profile.cruiseTas,
+			climbVy: flightPlanStore.profile.climbVy,
+			climbRateFpm: flightPlanStore.profile.climbRateFpm,
+			descentRateFpm: flightPlanStore.profile.descentRateFpm
+		};
+		isModalOpen = true;
+	}
+
+	function handleEditCurrentProfile() {
+		const current = aircraftProfilesStore.selectedProfile;
+		if (!current) return;
+		modalMode = 'edit';
+		modalInitialData = {
+			id: current.id,
+			name: current.name,
+			cruiseTas: flightPlanStore.profile.cruiseTas,
+			climbVy: flightPlanStore.profile.climbVy,
+			climbRateFpm: flightPlanStore.profile.climbRateFpm,
+			descentRateFpm: flightPlanStore.profile.descentRateFpm
+		};
+		isModalOpen = true;
+	}
+
+	async function handleDeleteCurrentProfile() {
+		const current = aircraftProfilesStore.selectedProfile;
+		if (!current || !current.isCustom) return;
+		const confirmMsg = m.profile_delete_confirm
+			? m.profile_delete_confirm({ name: current.name })
+			: `Delete custom profile "${current.name}"?`;
+		if (window.confirm(confirmMsg)) {
+			await aircraftProfilesStore.deleteCustomProfile(current.id);
+		}
+	}
+
+	async function handleSaveModalProfile(data: {
+		id?: string;
 		name: string;
 		cruiseTas: number;
 		climbVy: number;
 		climbRateFpm: number;
 		descentRateFpm: number;
+	}) {
+		await aircraftProfilesStore.saveCustomProfile(data);
+		isModalOpen = false;
 	}
 
-	const AIRCRAFT_PRESETS: AircraftPreset[] = [
-		{
-			id: 'c172',
-			name: 'Cessna 172 Skyhawk',
-			cruiseTas: 110,
-			climbVy: 74,
-			climbRateFpm: 700,
-			descentRateFpm: 500
-		},
-		{
-			id: 'pa28',
-			name: 'Piper PA-28 Cherokee',
-			cruiseTas: 115,
-			climbVy: 76,
-			climbRateFpm: 650,
-			descentRateFpm: 500
-		},
-		{
-			id: 'c152',
-			name: 'Cessna 152',
-			cruiseTas: 90,
-			climbVy: 67,
-			climbRateFpm: 600,
-			descentRateFpm: 500
-		},
-		{
-			id: 'lsa',
-			name: 'Ultralight / LSA (Default)',
-			cruiseTas: 80,
-			climbVy: 70,
-			climbRateFpm: 700,
-			descentRateFpm: 500
-		},
-		{
-			id: 'custom',
-			name: 'Custom Performance Profile',
-			cruiseTas: flightPlanStore.profile.cruiseTas,
-			climbVy: flightPlanStore.profile.climbVy,
-			climbRateFpm: flightPlanStore.profile.climbRateFpm,
-			descentRateFpm: flightPlanStore.profile.descentRateFpm
-		}
-	];
-
-	let selectedPresetId = $state<string>('lsa');
-	let isPerformanceExpanded = $state<boolean>(false);
-	let alternatesInput = $state<string>(flightPlanStore.profile.altIcaos.join(', '));
-
-	function handlePresetChange(e: Event) {
-		const select = e.target as HTMLSelectElement;
-		selectedPresetId = select.value;
-		const preset = AIRCRAFT_PRESETS.find((p) => p.id === select.value);
-		if (preset && preset.id !== 'custom') {
-			flightPlanStore.updateProfile({
-				cruiseTas: preset.cruiseTas,
-				climbVy: preset.climbVy,
-				climbRateFpm: preset.climbRateFpm,
-				descentRateFpm: preset.descentRateFpm
-			});
-		}
+	function onPerformanceParamInput() {
+		aircraftProfilesStore.syncWithCurrentFlightPlan();
 	}
 
 	function handleAlternatesChange(e: Event) {
@@ -116,32 +120,79 @@
 
 		<!-- Reusable Aircraft Profile Selector -->
 		<div class="rounded-lg border border-slate-800 bg-slate-950 p-2.5">
-			<label for="aircraft-preset-select" class="mb-1 block text-[11px] font-medium text-slate-400">
-				Aircraft Airframe / Model
-			</label>
+			<div class="mb-1 flex items-center justify-between">
+				<label for="aircraft-preset-select" class="block text-[11px] font-medium text-slate-400">
+					{m.profile_airframe_label ? m.profile_airframe_label() : 'Aircraft Airframe / Profile'}
+				</label>
+				<button
+					type="button"
+					onclick={handleCreateNewProfile}
+					class="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-cyan-400 transition-colors hover:text-cyan-300"
+					title="Create new aircraft profile"
+				>
+					<Icon name="plus" class="h-3 w-3" />
+					<span>{m.profile_new_btn ? m.profile_new_btn() : 'New Profile'}</span>
+				</button>
+			</div>
+
 			<div class="flex items-center gap-2">
 				<select
 					id="aircraft-preset-select"
-					value={selectedPresetId}
+					value={aircraftProfilesStore.selectedProfileId}
 					onchange={handlePresetChange}
 					class="flex-1 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 				>
-					{#each AIRCRAFT_PRESETS as preset (preset.id)}
-						<option value={preset.id}>{preset.name}</option>
-					{/each}
+					<optgroup label={m.profile_default_presets ? m.profile_default_presets() : 'Default Presets'}>
+						{#each DEFAULT_AIRCRAFT_PRESETS as preset (preset.id)}
+							<option value={preset.id}>{preset.name}</option>
+						{/each}
+					</optgroup>
+
+					{#if aircraftProfilesStore.customProfiles.length > 0}
+						<optgroup label={m.profile_custom_profiles ? m.profile_custom_profiles() : 'Custom Profiles'}>
+							{#each aircraftProfilesStore.customProfiles as customProf (customProf.id)}
+								<option value={customProf.id}>{customProf.name}</option>
+							{/each}
+						</optgroup>
+					{/if}
 				</select>
+
+				{#if aircraftProfilesStore.isCurrentCustomProfile}
+					<button
+						type="button"
+						onclick={handleEditCurrentProfile}
+						class="flex cursor-pointer items-center justify-center rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 transition-colors hover:border-cyan-500 hover:text-cyan-400"
+						title={m.profile_edit_btn ? m.profile_edit_btn() : 'Edit Profile'}
+						aria-label="Edit Profile"
+					>
+						<Icon name="pencil" class="h-3.5 w-3.5" />
+					</button>
+
+					<button
+						type="button"
+						onclick={handleDeleteCurrentProfile}
+						class="flex cursor-pointer items-center justify-center rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-400 transition-colors hover:border-rose-500 hover:text-rose-400"
+						title={m.profile_delete_btn ? m.profile_delete_btn() : 'Delete Profile'}
+						aria-label="Delete Profile"
+					>
+						<Icon name="trash" class="h-3.5 w-3.5" />
+					</button>
+				{/if}
 			</div>
 
 			<!-- Compact Profile Summary Badges -->
-			<div class="mt-2 flex items-center gap-2 font-mono text-[10px] text-slate-400">
-				<span class="rounded-xs bg-slate-900 px-1.5 py-0.5 border border-slate-800">
+			<div class="mt-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-slate-400">
+				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
 					TAS: <strong class="text-cyan-300">{flightPlanStore.profile.cruiseTas} kt</strong>
 				</span>
-				<span class="rounded-xs bg-slate-900 px-1.5 py-0.5 border border-slate-800">
+				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
 					Climb: <strong class="text-cyan-300">{flightPlanStore.profile.climbRateFpm} fpm</strong>
 				</span>
-				<span class="rounded-xs bg-slate-900 px-1.5 py-0.5 border border-slate-800">
+				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
 					Vy: <strong class="text-cyan-300">{flightPlanStore.profile.climbVy} kt</strong>
+				</span>
+				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
+					Desc: <strong class="text-cyan-300">{flightPlanStore.profile.descentRateFpm} fpm</strong>
 				</span>
 			</div>
 		</div>
@@ -160,7 +211,7 @@
 									id="vy-input"
 									type="number"
 									bind:value={flightPlanStore.profile.climbVy}
-									oninput={() => (selectedPresetId = 'custom')}
+									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
 								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">kt</span>
@@ -177,7 +228,7 @@
 									type="number"
 									step="50"
 									bind:value={flightPlanStore.profile.climbRateFpm}
-									oninput={() => (selectedPresetId = 'custom')}
+									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-7 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
 								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">fpm</span>
@@ -213,7 +264,7 @@
 									id="tas-input"
 									type="number"
 									bind:value={flightPlanStore.profile.cruiseTas}
-									oninput={() => (selectedPresetId = 'custom')}
+									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
 								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">kt</span>
@@ -230,7 +281,7 @@
 									type="number"
 									step="50"
 									bind:value={flightPlanStore.profile.descentRateFpm}
-									oninput={() => (selectedPresetId = 'custom')}
+									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-7 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
 								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">fpm</span>
@@ -253,6 +304,37 @@
 							</div>
 						</div>
 					</div>
+				</div>
+
+				<!-- Quick Save / Update actions in details view -->
+				<div class="flex items-center justify-end gap-2 pt-1">
+					{#if aircraftProfilesStore.isCurrentCustomProfile}
+						<button
+							type="button"
+							onclick={() => {
+								if (aircraftProfilesStore.selectedProfile) {
+									aircraftProfilesStore.saveCustomProfile({
+										id: aircraftProfilesStore.selectedProfile.id,
+										name: aircraftProfilesStore.selectedProfile.name,
+										cruiseTas: flightPlanStore.profile.cruiseTas,
+										climbVy: flightPlanStore.profile.climbVy,
+										climbRateFpm: flightPlanStore.profile.climbRateFpm,
+										descentRateFpm: flightPlanStore.profile.descentRateFpm
+									});
+								}
+							}}
+							class="cursor-pointer rounded-md border border-cyan-500/40 bg-cyan-950/40 px-2.5 py-1 text-[11px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-900/60"
+						>
+							{m.profile_update_saved ? m.profile_update_saved() : 'Update Profile'}
+						</button>
+					{/if}
+					<button
+						type="button"
+						onclick={handleCreateNewProfile}
+						class="cursor-pointer rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-slate-300 transition-colors hover:border-cyan-500 hover:text-white"
+					>
+						{m.profile_save_as_new ? m.profile_save_as_new() : 'Save as New Profile'}
+					</button>
 				</div>
 			</div>
 		{/if}
@@ -341,3 +423,13 @@
 		</div>
 	</div>
 </div>
+
+<!-- Modal for creating/editing aircraft profiles -->
+<AircraftProfileModal
+	isOpen={isModalOpen}
+	mode={modalMode}
+	initialData={modalInitialData}
+	onSave={handleSaveModalProfile}
+	onCancel={() => (isModalOpen = false)}
+/>
+

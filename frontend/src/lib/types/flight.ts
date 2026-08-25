@@ -32,6 +32,57 @@ export interface FlightProfile {
 	descentRateFpm: number; // Descent vertical speed (feet per minute, e.g. 500)
 }
 
+export interface AircraftPerformanceProfile {
+	id: string; // e.g. 'c172' or 'prof_1724601234'
+	name: string; // Display title (e.g. 'Cessna 172 Skyhawk')
+	cruiseTas: number; // True Airspeed in cruise (knots)
+	climbVy: number; // Best rate of climb airspeed (knots)
+	climbRateFpm: number; // Climb rate (fpm)
+	descentRateFpm: number; // Descent rate (fpm)
+	isCustom?: boolean; // Whether this is a user-created profile
+	createdAt?: number; // Epoch timestamp
+	updatedAt?: number; // Epoch timestamp
+}
+
+export const DEFAULT_AIRCRAFT_PRESETS: AircraftPerformanceProfile[] = [
+	{
+		id: 'lsa',
+		name: 'Ultralight / LSA (Default)',
+		cruiseTas: 80,
+		climbVy: 70,
+		climbRateFpm: 700,
+		descentRateFpm: 500,
+		isCustom: false
+	},
+	{
+		id: 'c172',
+		name: 'Cessna 172 Skyhawk',
+		cruiseTas: 110,
+		climbVy: 74,
+		climbRateFpm: 700,
+		descentRateFpm: 500,
+		isCustom: false
+	},
+	{
+		id: 'pa28',
+		name: 'Piper PA-28 Cherokee',
+		cruiseTas: 115,
+		climbVy: 76,
+		climbRateFpm: 650,
+		descentRateFpm: 500,
+		isCustom: false
+	},
+	{
+		id: 'c152',
+		name: 'Cessna 152',
+		cruiseTas: 90,
+		climbVy: 67,
+		climbRateFpm: 600,
+		descentRateFpm: 500,
+		isCustom: false
+	}
+];
+
 export interface ChartOverlay {
 	id: string; // Unique ID (e.g. 'chart_sevilla_vfr')
 	name: string; // Display title (e.g. 'ENAIRE VFR Sevilla 1:500k')
