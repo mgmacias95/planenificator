@@ -4,7 +4,6 @@
 	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
-	let isExpanded = $state<boolean>(true);
 	let showInfoNotams = $state<boolean>(false);
 
 	const totalAlerts = $derived(
@@ -22,28 +21,20 @@
 
 <div class="space-y-3">
 	<div class="flex items-center justify-between">
-		<button
-			type="button"
-			onclick={() => (isExpanded = !isExpanded)}
-			class="flex cursor-pointer items-center gap-2 text-xs font-semibold tracking-wider text-slate-300 uppercase hover:text-white"
+		<h3
+			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
 		>
-			<Icon
-				name={isExpanded ? 'chevron-down' : 'chevron-right'}
-				class="h-3.5 w-3.5 text-slate-400"
-			/>
-			<Icon name="shield" class="h-4 w-4 text-cyan-400" />
+			<Icon name="shield" class="h-3.5 w-3.5 text-cyan-400" />
 			<span>4. {m.safety_title()}</span>
-		</button>
+		</h3>
 
 		{#if calculationStore.hasCalculated}
 			{#if totalAlerts > 0}
-				<button
-					type="button"
-					onclick={() => (isExpanded = !isExpanded)}
-					class="cursor-pointer rounded-full border border-amber-800/80 bg-amber-950/80 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300 transition-colors hover:bg-amber-900"
+				<span
+					class="rounded-full border border-amber-800/80 bg-amber-950/80 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300"
 				>
 					{totalAlerts} Alerts
-				</button>
+				</span>
 			{:else}
 				<span
 					class="flex items-center gap-1 rounded-full border border-emerald-800/80 bg-emerald-950/80 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300"
@@ -55,14 +46,13 @@
 		{/if}
 	</div>
 
-	{#if isExpanded}
-		{#if !calculationStore.hasCalculated}
-			<div
-				class="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-center text-xs text-slate-400 italic"
-			>
-				Calculate a route to perform semicircular rule safety checks and ENAIRE corridor NOTAM
-				filtering.
-			</div>
+	{#if !calculationStore.hasCalculated}
+		<div
+			class="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-center text-xs text-slate-400 italic"
+		>
+			Calculate a route to perform semicircular rule safety checks and ENAIRE corridor NOTAM
+			filtering.
+		</div>
 		{:else if totalAlerts === 0}
 			<div
 				class="flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300"
@@ -207,5 +197,4 @@
 				{/if}
 			</div>
 		{/if}
-	{/if}
 </div>
