@@ -63,11 +63,15 @@
 		}
 
 		// Add or update markers
+		const lastSeg = flightPlanStore.segments[flightPlanStore.segments.length - 1];
+		const lastSegWpIds = new Set(lastSeg?.waypointIds ?? []);
+
 		flightPlanStore.waypoints.forEach((wp, idx) => {
+			const isEditable = lastSegWpIds.has(wp.id);
 			let marker = waypointMarkers.get(wp.id);
 			if (!marker) {
 				marker = L.marker([wp.lat, wp.lng], {
-					draggable: true,
+					draggable: isEditable,
 					title: wp.name,
 					icon: createWaypointIcon(idx)
 				}).addTo(map!);
@@ -94,6 +98,12 @@
 				marker.setLatLng([wp.lat, wp.lng]);
 				marker.setIcon(createWaypointIcon(idx));
 				marker.setPopupContent(`<b>WP ${idx + 1}:</b> ${wp.name}`);
+				// Update draggability based on current segment membership
+				if (isEditable) {
+					marker.dragging?.enable();
+				} else {
+					marker.dragging?.disable();
+				}
 			}
 		});
 	}

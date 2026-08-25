@@ -91,23 +91,24 @@
 		<div class="space-y-2.5">
 			{#each flightPlanStore.segments as seg, sIdx (seg.id)}
 				{@const isActive = sIdx === flightPlanStore.activeSegmentIndex}
+				{@const isLastSegment = sIdx === flightPlanStore.segments.length - 1}
 				{@const isLocked = isSegmentLocked(sIdx)}
 				{@const segColor = seg.color || SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length]}
 				{@const segNotices = getSegmentNotices(sIdx)}
 
 				<div
 					class="overflow-hidden rounded-lg border bg-slate-900/90 shadow-xs transition-all"
-					style:border-color={isActive ? segColor : '#1e293b'}
+					style:border-color={isActive && isLastSegment ? segColor : '#1e293b'}
 					style:border-left-width="4px"
 					style:border-left-color={segColor}
 				>
 					<!-- Segment Header -->
 					<div
 						class="flex cursor-pointer items-center justify-between bg-slate-900 p-2.5 transition-colors hover:bg-slate-800/60"
-						onclick={() => flightPlanStore.setActiveSegment(sIdx)}
+						onclick={() => isLastSegment ? flightPlanStore.setActiveSegment(sIdx) : flightPlanStore.toggleSegmentCollapse(sIdx)}
 						role="button"
 						tabindex="0"
-						onkeydown={(e) => e.key === 'Enter' && flightPlanStore.setActiveSegment(sIdx)}
+						onkeydown={(e) => e.key === 'Enter' && (isLastSegment ? flightPlanStore.setActiveSegment(sIdx) : flightPlanStore.toggleSegmentCollapse(sIdx))}
 					>
 						<div class="flex items-center gap-2">
 							<button
@@ -153,17 +154,19 @@
 						</div>
 
 						<div class="flex items-center gap-1">
-							<button
-								type="button"
-								onclick={(e) => {
-									e.stopPropagation();
-									promptEditSegmentAlt(sIdx);
-								}}
-								class="p-1 text-slate-400 hover:text-cyan-300"
-								title="Edit Cruise Altitude"
-							>
-								<Icon name="pencil" class="h-3.5 w-3.5" />
-							</button>
+							{#if isLastSegment}
+								<button
+									type="button"
+									onclick={(e) => {
+										e.stopPropagation();
+										promptEditSegmentAlt(sIdx);
+									}}
+									class="p-1 text-slate-400 hover:text-cyan-300"
+									title="Edit Cruise Altitude"
+								>
+									<Icon name="pencil" class="h-3.5 w-3.5" />
+								</button>
+							{/if}
 
 							{#if flightPlanStore.segments.length > 1 && sIdx === flightPlanStore.segments.length - 1}
 								<button
@@ -227,8 +230,9 @@
 													type="text"
 													value={wp.name}
 													oninput={(e) => handleWaypointNameChange(wp.id, e)}
-													class="flex-1 truncate border-b border-transparent bg-transparent px-1 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-700 focus:border-cyan-400 focus:outline-hidden"
-													title="Click to rename waypoint"
+													readonly={!isLastSegment}
+													class="flex-1 truncate border-b border-transparent bg-transparent px-1 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-700 focus:border-cyan-400 focus:outline-hidden {!isLastSegment ? 'cursor-default opacity-60' : ''}"
+													title={isLastSegment ? 'Click to rename waypoint' : 'Cannot rename waypoint in a locked segment'}
 												/>
 											</div>
 
@@ -240,7 +244,7 @@
 													{wp.lat.toFixed(3)}, {wp.lng.toFixed(3)}
 												</span>
 
-												{#if !isLocked && !isShared}
+												{#if isLastSegment && !isShared}
 													<button
 														type="button"
 														onclick={() => flightPlanStore.removeWaypoint(wp.id)}

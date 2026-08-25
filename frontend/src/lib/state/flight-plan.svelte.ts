@@ -108,11 +108,8 @@ export class FlightPlanState {
 			this.addSegment();
 		}
 
-		if (this.activeSegmentIndex >= this.segments.length) {
-			this.activeSegmentIndex = this.segments.length - 1;
-		}
-
-		const currentSeg = this.segments[this.activeSegmentIndex];
+		// Always add to the last segment — earlier segments are locked
+		const currentSeg = this.segments[this.segments.length - 1];
 		const totalWaypointsCount = this.waypoints.length + 1;
 
 		const wp: Waypoint = {
@@ -244,12 +241,13 @@ export class FlightPlanState {
 		this.waypoints = [...plan.waypoints];
 		this.segments = plan.segments.map((seg, idx) => ({
 			...seg,
-			color: seg.color || SEGMENT_COLORS[idx % SEGMENT_COLORS.length]
+			color: seg.color || SEGMENT_COLORS[idx % SEGMENT_COLORS.length],
+			collapsed: idx < plan.segments.length - 1
 		}));
 		this.profile = { ...plan.profile };
 		this.activePlanId = plan.id;
 		this.activePlanName = plan.name;
-		this.activeSegmentIndex = 0;
+		this.activeSegmentIndex = this.segments.length - 1;
 		this.aircraftProfileId = plan.aircraftProfileId || 'lsa';
 		aircraftProfilesStore.applySavedAircraftProfile(plan.aircraftProfileId);
 		this.takeCleanSnapshot();
