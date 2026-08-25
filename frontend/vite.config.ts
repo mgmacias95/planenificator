@@ -64,7 +64,10 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter({ fallback: 'index.html', strict: false })
+			adapter: adapter({ fallback: 'index.html', strict: false }),
+			paths: {
+				base: process.argv.includes('dev') ? '' : (process.env.BASE_PATH ?? '')
+			}
 		}),
 
 		paraglideVitePlugin({
