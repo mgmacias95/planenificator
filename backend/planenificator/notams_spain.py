@@ -232,11 +232,22 @@ def check_route_conflicts(
     lower = notam.get('LOWER_VAL')
     upper = notam.get('UPPER_VAL')
 
-    # If they are not defined, we assume a conflict for safety
-    lower = 0 if lower is None else lower
-    upper = 99900 if upper is None else upper
+    # Convert values given in Flight Levels (< 1000) to feet
+    if lower is None or lower == 0:
+      lower_ft = 0
+    elif 0 < lower < 1000:
+      lower_ft = lower * 100
+    else:
+      lower_ft = lower
 
-    if lower <= max_alt and upper >= min_alt:
+    if upper is None or upper == 999 or upper >= 99900:
+      upper_ft = 99900
+    elif 0 < upper < 1000:
+      upper_ft = upper * 100
+    else:
+      upper_ft = upper
+
+    if lower_ft <= max_alt and upper_ft >= min_alt:
       conflicts.append(notam)
 
   return conflicts

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { chartStore } from '$lib/state/charts.svelte';
 	import { chartGeoreferencer } from '$lib/services/georef';
+	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	let isDragging = $state<boolean>(false);
@@ -76,7 +77,7 @@
 		<h3
 			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-300 uppercase"
 		>
-			<span>🗺️</span>
+			<Icon name="map-pin" class="h-3.5 w-3.5 text-cyan-400" />
 			<span>{m.charts_title()}</span>
 		</h3>
 		<span class="font-mono text-[11px] text-slate-400">
@@ -112,10 +113,10 @@
 				type="button"
 				onclick={handleLoadCatalogChart}
 				disabled={!selectedCatalogId || chartStore.isLoadingChart}
-				class="shrink-0 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500"
+				class="flex items-center justify-center shrink-0 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500"
 			>
 				{#if chartStore.isLoadingChart}
-					<span class="inline-block animate-spin">⏳</span>
+					<Icon name="loader" class="h-4 w-4" />
 				{:else}
 					{m.btn_load()}
 				{/if}
@@ -160,7 +161,9 @@
 				}
 			}}
 		/>
-		<div class="mb-1 text-xl">📥</div>
+		<div class="mb-1 flex justify-center text-cyan-400">
+			<Icon name="plus" class="h-5 w-5" />
+		</div>
 		<div class="text-xs font-medium text-slate-300">{m.charts_dropzone()}</div>
 		<div class="mt-0.5 text-[10px] text-slate-500">
 			Supports automatic Lambert Conformal Conic georeferencing
@@ -192,10 +195,10 @@
 						<button
 							type="button"
 							onclick={() => chartStore.removeChart(chart.id)}
-							class="ml-2 shrink-0 p-1 text-xs text-slate-500 transition-colors hover:text-rose-400"
+							class="ml-2 shrink-0 p-1 text-slate-500 transition-colors hover:text-rose-400"
 							title="Unload Chart"
 						>
-							✕
+							<Icon name="x" class="h-3.5 w-3.5" />
 						</button>
 					</div>
 

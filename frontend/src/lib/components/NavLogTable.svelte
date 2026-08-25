@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { calculationStore } from '$lib/state/calculation.svelte';
+	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
 </script>
 
 <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/90 shadow-lg">
 	<div class="flex items-center justify-between border-b border-slate-800 bg-slate-900 p-3">
 		<div class="flex items-center gap-2">
-			<span class="text-base">📋</span>
+			<Icon name="clipboard" class="h-4 w-4 text-cyan-400" />
 			<h3 class="text-sm font-semibold tracking-wider text-slate-200 uppercase">
 				{m.navlog_title()}
 			</h3>
@@ -31,7 +32,7 @@
 	{#if calculationStore.error}
 		<div class="border-b border-rose-900/50 bg-rose-950/40 p-4 font-mono text-xs text-rose-300">
 			<div class="mb-1 flex items-center gap-1.5 font-bold">
-				<span>⚠️</span>
+				<Icon name="alert-triangle" class="h-4 w-4 text-rose-400" />
 				<span>Flight Calculation Error:</span>
 			</div>
 			<div>{calculationStore.error}</div>
