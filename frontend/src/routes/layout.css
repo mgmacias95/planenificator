@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+:root {
+	--color-hud-bg: #0b0f19;
+	--color-hud-card: #111827;
+	--color-hud-border: #1f293d;
+	--color-hud-accent: #00f0ff;
+	--color-hud-amber: #ffd600;
+	--color-hud-rose: #ff007f;
+	--color-hud-green: #00e676;
+}
+
+body {
+	background-color: var(--color-hud-bg);
+	color: #e2e8f0;
+	font-family:
+		ui-sans-serif,
+		system-ui,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		Roboto,
+		'Helvetica Neue',
+		Arial,
+		sans-serif;
+	overflow-x: hidden;
+}
+
+/* Custom Cockpit Scrollbar */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #334155;
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #475569;
+}
+
+/* Leaflet Map overrides for Dark HUD */
+.leaflet-container {
+	background: #090d16 !important;
+	font-family: inherit !important;
+}
+
+.leaflet-bar a {
+	background-color: #1e293b !important;
+	color: #e2e8f0 !important;
+	border-color: #334155 !important;
+}
+
+.leaflet-bar a:hover {
+	background-color: #334155 !important;
+	color: #38bdf8 !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: #1e293b !important;
+	color: #f8fafc !important;
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+	border: 1px solid #334155 !important;
+}
+
+/* Print Styles */
+@media print {
+	body {
+		background-color: #ffffff !important;
+		color: #000000 !important;
+	}
+	.no-print {
+		display: none !important;
+	}
+	.print-only {
+		display: block !important;
+	}
+	@page {
+		size: A4 portrait;
+		margin: 1cm;
+	}
+}
+
+@media screen {
+	.print-only {
+		display: none !important;
+	}
+}
