@@ -35,6 +35,13 @@ describe('Chart Georeferencer & World File Parser', () => {
 		expect(lng).toBeCloseTo(-4, 1);
 	});
 
+	it('should accurately project Canary Islands LCC coordinates', () => {
+		// Canary Islands center LCC origin: lat_0=26, lon_0=-17
+		const { lat, lng } = georef.projectToWgs84(0, 0, true);
+		expect(lat).toBeCloseTo(26, 1);
+		expect(lng).toBeCloseTo(-17, 1);
+	});
+
 	it('should provide fallback ENAIRE catalog items when network unavailable', async () => {
 		const items = await georef.fetchEnaireCatalog();
 		expect(items.length).toBeGreaterThan(0);
@@ -70,5 +77,21 @@ describe('Chart Georeferencer & World File Parser', () => {
 
 		store.removeChart('test_chart_1');
 		expect(store.loadedCharts.length).toBe(0);
+	});
+
+	it('should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present', async () => {
+		const fs = await import('node:fs');
+		const zipPath = '/home/wocat/2026_LE5_CENTROSUR.zip';
+		if (fs.existsSync(zipPath)) {
+			const buf = fs.readFileSync(zipPath).buffer;
+			const { tiffBuffer, tfwText, filename } = await georef.unpackZipChart(buf);
+			expect(tiffBuffer.byteLength).toBeGreaterThan(0);
+			expect(filename).toBe('2026_LE5_CENTROSUR');
+			expect(tfwText).toBeTruthy();
+
+			const metrics = georef.parseWorldFile(tfwText);
+			expect(metrics.pixelScaleX).toBeCloseTo(42.33, 1);
+			expect(metrics.pixelScaleY).toBeCloseTo(-42.33, 1);
+		}
 	});
 });
