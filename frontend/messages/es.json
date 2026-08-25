@@ -52,7 +52,7 @@
 	"charts_active": "Capas Activas",
 	"projects_title": "Planes de Vuelo Guardados",
 	"projects_save_label": "Crear Nuevo Plan",
-	"projects_empty": "Aún no hay planes guardados en IndexedDB.",
+	"projects_empty": "Aún no hay planes de vuelo guardados.",
 	"loading_title": "Calculando Ruta",
 	"loading_subtitle": "Calculando plan de vuelo operacional, meteorología en altura y NOTAMs...",
 	"loading_step_route": "Resolviendo puntos y perfil de ruta",

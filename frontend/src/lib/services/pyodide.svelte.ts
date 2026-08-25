@@ -137,11 +137,11 @@ export class PyodideService implements IPyodideService {
 			try {
 				this.status = {
 					state: 'loading_wasm',
-					progressMessage: 'Loading WebAssembly Python runtime...'
+					progressMessage: 'Initializing flight engine...'
 				};
 
 				if (typeof window === 'undefined' || typeof window.loadPyodide !== 'function') {
-					throw new Error('Pyodide script is not loaded in window');
+					throw new Error('Flight engine failed to load in browser');
 				}
 
 				// Load Pyodide WASM runtime from official CDN distribution
@@ -151,7 +151,7 @@ export class PyodideService implements IPyodideService {
 
 				this.status = {
 					state: 'installing_packages',
-					progressMessage: 'Installing aviation & math packages...'
+					progressMessage: 'Loading aviation calculation modules...'
 				};
 
 				await this.pyodide.loadPackage(['ssl', 'micropip', 'requests', 'pyodide-http']);
@@ -160,7 +160,7 @@ export class PyodideService implements IPyodideService {
 
 				this.status = {
 					state: 'loading_modules',
-					progressMessage: 'Mounting Planenificator modules...'
+					progressMessage: 'Loading flight planning tools...'
 				};
 
 				try {
@@ -185,7 +185,7 @@ export class PyodideService implements IPyodideService {
 						cache: 'no-store'
 					});
 					if (!response.ok) {
-						throw new Error(`Failed to load static module ${file} (HTTP ${response.status})`);
+						throw new Error(`Failed to load navigation module ${file} (HTTP ${response.status})`);
 					}
 					const code = await response.text();
 					this.pyodide.FS.writeFile(`planenificator/${file}`, code);
@@ -199,13 +199,13 @@ export class PyodideService implements IPyodideService {
 
 				this.status = {
 					state: 'ready',
-					progressMessage: 'Engine Ready (Client-Side WASM)'
+					progressMessage: 'Flight Engine Ready'
 				};
 			} catch (err: any) {
 				console.error('Pyodide initialization failed:', err);
 				this.status = {
 					state: 'error',
-					progressMessage: 'Failed to load Python WASM runtime',
+					progressMessage: 'Failed to initialize flight engine',
 					error: err?.message || String(err)
 				};
 				throw err;
@@ -227,7 +227,7 @@ export class PyodideService implements IPyodideService {
 		if (!this.isReady() || !this.pyodide) {
 			await this.init();
 			if (!this.pyodide) {
-				throw new Error('Pyodide engine is not initialized');
+				throw new Error('Flight planning engine is not ready');
 			}
 		}
 

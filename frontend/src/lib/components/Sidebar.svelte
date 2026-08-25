@@ -38,7 +38,7 @@
 					<!-- Demoted Engine Status Indicator Dot -->
 					<div
 						class="flex cursor-help items-center gap-1"
-						title={`Engine Runtime: ${pyodideService.status.progressMessage} (${pyodideService.status.state})`}
+						title={`Flight Engine: ${pyodideService.status.progressMessage}`}
 					>
 						<span
 							class="h-2 w-2 rounded-full transition-all"
