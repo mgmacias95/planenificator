@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "node scripts/sync-python.js && vite dev",
 		"sync:python": "node scripts/sync-python.js",
 		"build:gazetteer": "node scripts/build-gazetteer.js",
 		"build": "node scripts/sync-python.js && vite build",
