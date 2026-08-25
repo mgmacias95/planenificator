@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { calculationStore } from '$lib/state/calculation.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import Icon from './Icon.svelte';
 
 	interface StepItem {
 		id: string;
 		label: () => string;
-		icon: string;
+		icon: 'map-pin' | 'cloud' | 'alert-triangle' | 'compass';
 		detail: string;
 	}
 
@@ -13,25 +14,25 @@
 		{
 			id: 'route',
 			label: () => m.loading_step_route(),
-			icon: '📍',
+			icon: 'map-pin',
 			detail: 'Resolving route coordinates & landmark fixes'
 		},
 		{
 			id: 'weather',
 			label: () => m.loading_step_weather(),
-			icon: '⛅',
+			icon: 'cloud',
 			detail: 'Querying Open-Meteo / ECMWF aloft winds & temperatures'
 		},
 		{
 			id: 'notams',
 			label: () => m.loading_step_notams(),
-			icon: '⚠️',
+			icon: 'alert-triangle',
 			detail: 'Fetching en-route airspace & aerodrome NOTAM restrictions'
 		},
 		{
 			id: 'navlog',
 			label: () => m.loading_step_navlog(),
-			icon: '🧭',
+			icon: 'compass',
 			detail: 'Computing magnetic headings, ground speeds & climb/descent profile'
 		}
 	];
@@ -93,7 +94,7 @@
 						class="absolute inset-0 animate-ping rounded-2xl bg-cyan-500/20 [animation-duration:2.5s]"
 					></div>
 					<!-- Center Icon -->
-					<span class="text-2xl select-none">✈️</span>
+					<Icon name="plane" class="h-7 w-7 text-cyan-300 select-none" size={28} />
 				</div>
 
 				<div class="min-w-0 flex-1">
@@ -137,11 +138,11 @@
 					>
 						<div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
 							{#if isActive}
-								<span class="inline-block animate-spin text-xs">⚙️</span>
+								<Icon name="loader" class="h-3.5 w-3.5 text-cyan-400" />
 							{:else if isPast}
-								<span class="text-xs text-emerald-400">✓</span>
+								<Icon name="check-circle" class="h-3.5 w-3.5 text-emerald-400" />
 							{:else}
-								<span class="text-xs opacity-50">{step.icon}</span>
+								<Icon name={step.icon} class="h-3.5 w-3.5 text-slate-500 opacity-60" />
 							{/if}
 						</div>
 

@@ -1,36 +1,5 @@
 import proj4 from 'proj4';
 import { fromArrayBuffer as tiffFromArrayBuffer } from 'geotiff';
-import * as fflate from 'fflate';
-import type { ChartOverlay } from '$lib/types/flight';
-import ChartProcessorWorker from '$lib/workers/chart-processor.worker?worker';
-
-export interface WorldFileMetrics {
-	pixelScaleX: number;
-	rotationY: number;
-	rotationX: number;
-	pixelScaleY: number;
-	originX: number;
-	originY: number;
-}
-
-export interface EnaireCatalogItem {
-	id: string;
-	name: string;
-	downloadUrl: string;
-	region: string;
-	isCanaries?: boolean;
-}
-
-export interface IChartGeoreferencer {
-	parseWorldFile(tfwContent: string): WorldFileMetrics;
-	projectToWgs84(x: number, y: number, isCanaries?: boolean): { lat: number; lng: number };
-	unpackZipChart(
-		zipBuffer: ArrayBuffer
-	): Promise<{ tiffBuffer: ArrayBuffer; tfwText: string; filename: string }>;
-	processRasterChart(name: string, tiffBuffer: ArrayBuffer, tfwText: string): Promise<ChartOverlay>;
-	fetchEnaireCatalog(): Promise<EnaireCatalogItem[]>;
-	loadOnlineChart(catalogItem: EnaireCatalogItem): Promise<ChartOverlay>;
-}
 
 // Setup CRS definitions for Spanish Lambert Conformal Conic (LCC) and Web Mercator
 if (!proj4.defs('EPSG:3857')) {
@@ -52,108 +21,41 @@ if (!proj4.defs('ENAIRE:GC')) {
 	);
 }
 
-export class ChartGeoreferencer implements IChartGeoreferencer {
-	parseWorldFile(tfwContent: string): WorldFileMetrics {
-		const lines = tfwContent
-			.trim()
-			.split(/\r?\n/)
-			.map((line) => parseFloat(line.trim()))
-			.filter((val) => !isNaN(val));
+function parseWorldFile(tfwContent: string) {
+	const lines = tfwContent
+		.trim()
+		.split(/\r?\n/)
+		.map((line) => parseFloat(line.trim()))
+		.filter((val) => !isNaN(val));
 
-		if (lines.length < 6) {
-			throw new Error('Invalid World File (.TFW): expected 6 numerical parameters');
-		}
-
-		const [pixelScaleX, rotationY, rotationX, pixelScaleY, originX, originY] = lines;
-		return { pixelScaleX, rotationY, rotationX, pixelScaleY, originX, originY };
+	if (lines.length < 6) {
+		throw new Error('Invalid World File (.TFW): expected 6 numerical parameters');
 	}
 
-	projectToWgs84(x: number, y: number, isCanaries: boolean = false): { lat: number; lng: number } {
-		const targetCrs = isCanaries ? 'ENAIRE:GC' : 'ENAIRE:LE';
-		const [lng, lat] = proj4(targetCrs, 'WGS84', [x, y]);
-		return { lat, lng };
-	}
+	const [pixelScaleX, rotationY, rotationX, pixelScaleY, originX, originY] = lines;
+	return { pixelScaleX, rotationY, rotationX, pixelScaleY, originX, originY };
+}
 
-	async unpackZipChart(
-		zipBuffer: ArrayBuffer
-	): Promise<{ tiffBuffer: ArrayBuffer; tfwText: string; filename: string }> {
-		const zipped = new Uint8Array(zipBuffer);
-		const unzipped = fflate.unzipSync(zipped);
+function projectToWgs84(x: number, y: number, isCanaries: boolean = false): { lat: number; lng: number } {
+	const targetCrs = isCanaries ? 'ENAIRE:GC' : 'ENAIRE:LE';
+	const [lng, lat] = proj4(targetCrs, 'WGS84', [x, y]);
+	return { lat, lng };
+}
 
-		let tfwText: string | null = null;
-		let tiffBuffer: ArrayBuffer | null = null;
-		let baseFilename = 'chart';
+self.onmessage = async (e: MessageEvent<{ name: string; tiffBuffer: ArrayBuffer; tfwText: string }>) => {
+	const { name, tiffBuffer, tfwText } = e.data;
 
-		for (const [filePath, data] of Object.entries(unzipped)) {
-			const lower = filePath.toLowerCase();
-			if (lower.endsWith('.tfw')) {
-				tfwText = new TextDecoder().decode(data);
-			} else if (lower.endsWith('.tif') || lower.endsWith('.tiff')) {
-				tiffBuffer = data.slice().buffer;
-				baseFilename = filePath.replace(/^.*[\\/]/, '').replace(/\.[^/.]+$/, '');
-			}
-		}
-
-		if (!tiffBuffer) {
-			throw new Error('ZIP chart archive must contain a .TIF or .TIFF file');
-		}
-
-		return { tiffBuffer, tfwText: tfwText || '', filename: baseFilename };
-	}
-
-	async processRasterChart(
-		name: string,
-		tiffBuffer: ArrayBuffer,
-		tfwText: string
-	): Promise<ChartOverlay> {
-		const isCanaries = name.toLowerCase().includes('gc') || name.toLowerCase().includes('canarias');
-
-		// 1. Try background Web Worker first to keep the UI completely fluid
-		if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
-			try {
-				const overlay = await new Promise<ChartOverlay>((resolve, reject) => {
-					const worker = new ChartProcessorWorker();
-					worker.onmessage = (e: MessageEvent<any>) => {
-						worker.terminate();
-						if (e.data?.success) {
-							const blob = e.data.blob;
-							const imageBlobUrl = blob ? URL.createObjectURL(blob) : undefined;
-							resolve({
-								id: `chart_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-								name: e.data.name || name,
-								bounds: e.data.bounds,
-								scale: 1,
-								isCanaries,
-								imageBlobUrl,
-								opacity: 0.85,
-								visible: true,
-								sourceType: 'user_upload'
-							});
-						} else {
-							reject(new Error(e.data?.error || 'Worker failed processing chart'));
-						}
-					};
-					worker.onerror = (err) => {
-						worker.terminate();
-						reject(err);
-					};
-					worker.postMessage({ name, tiffBuffer, tfwText });
-				});
-				return overlay;
-			} catch (e) {
-				console.warn('Web Worker chart processing failed, falling back to main thread:', e);
-			}
-		}
+	try {
 		const tiff = await tiffFromArrayBuffer(tiffBuffer);
 		const image = await tiff.getImage();
 		const srcWidth = image.getWidth();
 		const srcHeight = image.getHeight();
 
-		let metrics: WorldFileMetrics;
+		let metrics: ReturnType<typeof parseWorldFile>;
 		if (tfwText && tfwText.trim()) {
-			metrics = this.parseWorldFile(tfwText);
+			metrics = parseWorldFile(tfwText);
 		} else {
-			// Extract from GeoTIFF embedded tags if TFW is missing
+			// Extract from GeoTIFF embedded tags
 			const fileDir = image.getFileDirectory() as any;
 			const tiePoints = fileDir?.ModelTiepoint;
 			const pixelScale = fileDir?.ModelPixelScale;
@@ -184,6 +86,7 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 			}
 		}
 
+		const isCanaries = name.toLowerCase().includes('gc') || name.toLowerCase().includes('canarias');
 		const isProjected = Math.abs(metrics.originX) > 180 || Math.abs(metrics.originY) > 90;
 		const targetCrs = isCanaries ? 'ENAIRE:GC' : 'ENAIRE:LE';
 
@@ -217,7 +120,7 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 
 			let lat: number, lng: number;
 			if (isProjected) {
-				const wgs = this.projectToWgs84(x_m, y_m, isCanaries);
+				const wgs = projectToWgs84(x_m, y_m, isCanaries);
 				lat = wgs.lat;
 				lng = wgs.lng;
 			} else {
@@ -244,33 +147,35 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 		const southWest: [number, number] = [swLat, swLng];
 		const northEast: [number, number] = [neLat, neLng];
 
-		// 2. Read source rasters (RGB / Palette / Grayscale)
-		let rasters: any = null;
-		let isInterleaved = false;
-		let numChannels = 3;
+		// 2. Read source rasters with high-resolution 8192px canvas for crystal clear zoom quality
+		const MAX_DIM = Math.min(Math.max(srcWidth, srcHeight), 8192);
+		const mercWidth = maxMercX - minMercX;
+		const mercHeight = maxMercY - minMercY;
+		const aspect = mercHeight / mercWidth;
 
-		try {
-			rasters = await image.readRGB();
-			if (rasters) {
-				isInterleaved = true;
-				numChannels = Math.max(1, Math.round(rasters.length / (srcWidth * srcHeight)));
-			}
-		} catch {
-			// Fall back to readRasters
+		let outWidth: number;
+		let outHeight: number;
+		if (aspect <= 1) {
+			outWidth = MAX_DIM;
+			outHeight = Math.max(1, Math.round(MAX_DIM * aspect));
+		} else {
+			outHeight = MAX_DIM;
+			outWidth = Math.max(1, Math.round(MAX_DIM / aspect));
 		}
 
-		if (!rasters) {
+		let rasters: any = null;
+		let isInterleaved = false;
+
+		try {
+			rasters = await image.readRasters({ interleave: false });
+			isInterleaved = false;
+		} catch {
 			try {
-				rasters = await image.readRasters({ interleave: false });
-				isInterleaved = false;
+				rasters = await image.readRGB();
+				isInterleaved = true;
 			} catch {
 				rasters = await image.readRasters();
-				if (Array.isArray(rasters)) {
-					isInterleaved = false;
-				} else {
-					isInterleaved = true;
-					numChannels = Math.max(1, Math.round((rasters?.length || 0) / (srcWidth * srcHeight)));
-				}
+				isInterleaved = !Array.isArray(rasters);
 			}
 		}
 
@@ -289,10 +194,7 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 
 		const isBands = !isInterleaved && !isColorMapped && Array.isArray(rasters);
 		const bandCount = isBands ? rasters.length : 0;
-		const isCmyk =
-			isBands &&
-			bandCount >= 4 &&
-			(fileDir?.PhotometricInterpretation === 5 || fileDir?.PhotometricInterpretation === undefined);
+		const isCmyk = isBands && bandCount >= 4 && (fileDir?.PhotometricInterpretation === 5 || fileDir?.PhotometricInterpretation === undefined);
 
 		const b0 = isBands && rasters[0] ? (rasters[0] as unknown as ArrayLike<number>) : null;
 		const b1 = isBands && rasters[1] ? (rasters[1] as unknown as ArrayLike<number>) : b0;
@@ -300,32 +202,12 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 		const b3 = isBands && rasters[3] ? (rasters[3] as unknown as ArrayLike<number>) : null;
 		const indices = isColorMapped ? (rasters[0] as unknown as ArrayLike<number>) : null;
 		const flatRaster = !isColorMapped && !isBands ? (rasters as unknown as ArrayLike<number>) : null;
-		const flatChannels = flatRaster
-			? Math.max(1, Math.round(flatRaster.length / (srcWidth * srcHeight)))
-			: 1;
+		const flatChannels = flatRaster ? Math.max(1, Math.round(flatRaster.length / (srcWidth * srcHeight))) : 1;
 
-		// 3. Determine output Web Mercator canvas dimensions
-		const MAX_DIM = Math.min(Math.max(srcWidth, srcHeight), 8192);
-		const mercWidth = maxMercX - minMercX;
-		const mercHeight = maxMercY - minMercY;
-		const aspect = mercHeight / mercWidth;
+		let blob: Blob | null = null;
 
-		let outWidth: number;
-		let outHeight: number;
-		if (aspect <= 1) {
-			outWidth = MAX_DIM;
-			outHeight = Math.max(1, Math.round(MAX_DIM * aspect));
-		} else {
-			outHeight = MAX_DIM;
-			outWidth = Math.max(1, Math.round(MAX_DIM / aspect));
-		}
-
-		let imageBlobUrl: string | undefined;
-
-		if (typeof document !== 'undefined') {
-			const canvas = document.createElement('canvas');
-			canvas.width = outWidth;
-			canvas.height = outHeight;
+		if (typeof OffscreenCanvas !== 'undefined') {
+			const canvas = new OffscreenCanvas(outWidth, outHeight);
 			const ctx = canvas.getContext('2d');
 
 			if (ctx) {
@@ -336,7 +218,6 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 				const gridCols = Math.ceil(outWidth / CELL_SIZE);
 				const gridRows = Math.ceil(outHeight / CELL_SIZE);
 
-				// Precalculate grid source pixel coordinates using Proj4
 				const gridSrcX = new Float32Array((gridRows + 1) * (gridCols + 1));
 				const gridSrcY = new Float32Array((gridRows + 1) * (gridCols + 1));
 
@@ -369,7 +250,6 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 					}
 				}
 
-				// Bilinearly fill each grid block
 				for (let gy = 0; gy < gridRows; gy++) {
 					const y0 = gy * CELL_SIZE;
 					const y1 = Math.min(y0 + CELL_SIZE, outHeight);
@@ -456,123 +336,20 @@ export class ChartGeoreferencer implements IChartGeoreferencer {
 				}
 
 				ctx.putImageData(imgData, 0, 0);
-
-				const blob = await new Promise<Blob | null>((resolve) =>
-					canvas.toBlob(resolve, 'image/png')
-				);
-				if (blob) {
-					imageBlobUrl = URL.createObjectURL(blob);
-				} else {
-					imageBlobUrl = canvas.toDataURL('image/png');
-				}
+				blob = await canvas.convertToBlob({ type: 'image/png' });
 			}
 		}
 
-		return {
-			id: `chart_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+		self.postMessage({
+			success: true,
 			name,
-			bounds: {
-				southWest,
-				northEast
-			},
-			scale: 1,
-			isCanaries,
-			imageBlobUrl,
-			opacity: 0.85,
-			visible: true,
-			sourceType: 'user_upload'
-		};
+			bounds: { southWest, northEast },
+			blob
+		});
+	} catch (err: any) {
+		self.postMessage({
+			success: false,
+			error: err?.message || String(err)
+		});
 	}
-
-	async fetchEnaireCatalog(): Promise<EnaireCatalogItem[]> {
-		const catalogUrl = 'https://aip.enaire.es/AIP/CartasInsigniaImpresas-es.html';
-		try {
-			const response = await fetch(catalogUrl);
-			if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-			const html = await response.text();
-
-			const parser = new DOMParser();
-			const doc = parser.parseFromString(html, 'text/html');
-			const rows = Array.from(doc.querySelectorAll('table.cartasVFR500 tr'));
-			const items: EnaireCatalogItem[] = [];
-
-			rows.forEach((row) => {
-				const descCell = row.querySelector('td.desc');
-				if (!descCell) return;
-				const descText = descCell.textContent?.trim() || '';
-
-				const zipLinks = Array.from(row.querySelectorAll('a[href$=".zip"]'));
-				zipLinks.forEach((link, idx) => {
-					let href = link.getAttribute('href');
-					if (href) {
-						if (href.startsWith('..')) {
-							href = 'https://aip.enaire.es/' + href.replace(/^\.\.\//, '');
-						} else if (href.startsWith('/')) {
-							href = 'https://aip.enaire.es' + href;
-						} else if (!href.startsWith('http')) {
-							href = 'https://aip.enaire.es/recursos/descargas/VFR500/' + href;
-						}
-
-						const title = link.getAttribute('title') || 'GeoTiff';
-						const fullName = zipLinks.length > 1 ? `${descText} (${title})` : descText;
-						const isCanaries =
-							fullName.toLowerCase().includes('gc') || fullName.toLowerCase().includes('canarias');
-
-						items.push({
-							id: `enaire_${idx}_${Math.random().toString(36).substring(2, 6)}`,
-							name: fullName,
-							downloadUrl: href,
-							region: isCanaries ? 'Canary Islands' : 'Mainland Spain',
-							isCanaries
-						});
-					}
-				});
-			});
-
-			return items;
-		} catch (e) {
-			console.warn('Failed to fetch online ENAIRE catalog:', e);
-			return [
-				{
-					id: 'enaire_madrid',
-					name: 'ENAIRE VFR 1:500k Madrid',
-					downloadUrl:
-						'https://aip.enaire.es/recursos/descargas/VFR500/LE_VFR500_4_MADRID_GEOTIFF.zip',
-					region: 'Mainland Spain',
-					isCanaries: false
-				},
-				{
-					id: 'enaire_sevilla',
-					name: 'ENAIRE VFR 1:500k Sevilla',
-					downloadUrl:
-						'https://aip.enaire.es/recursos/descargas/VFR500/LE_VFR500_7_SEVILLA_GEOTIFF.zip',
-					region: 'Mainland Spain',
-					isCanaries: false
-				},
-				{
-					id: 'enaire_barcelona',
-					name: 'ENAIRE VFR 1:500k Barcelona',
-					downloadUrl:
-						'https://aip.enaire.es/recursos/descargas/VFR500/LE_VFR500_3_BARCELONA_GEOTIFF.zip',
-					region: 'Mainland Spain',
-					isCanaries: false
-				}
-			];
-		}
-	}
-
-	async loadOnlineChart(catalogItem: EnaireCatalogItem): Promise<ChartOverlay> {
-		const response = await fetch(catalogItem.downloadUrl);
-		if (!response.ok) {
-			throw new Error(`Failed to download chart from ${catalogItem.downloadUrl} (${response.status})`);
-		}
-		const zipBuffer = await response.arrayBuffer();
-		const { tiffBuffer, tfwText } = await this.unpackZipChart(zipBuffer);
-		const overlay = await this.processRasterChart(catalogItem.name, tiffBuffer, tfwText);
-		overlay.sourceType = 'online_catalog';
-		overlay.sourceUrl = catalogItem.downloadUrl;
-		return overlay;
-	}
-}
-
-export const chartGeoreferencer = new ChartGeoreferencer();
+};

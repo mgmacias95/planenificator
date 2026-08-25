@@ -17,37 +17,42 @@
 		const fileArr = Array.from(files);
 		if (fileArr.length === 0) return;
 
-		for (const file of fileArr) {
-			if (file.name.toLowerCase().endsWith('.zip')) {
-				try {
-					const arrayBuffer = await file.arrayBuffer();
-					const { tiffBuffer, tfwText } = await chartGeoreferencer.unpackZipChart(arrayBuffer);
-					const overlay = await chartGeoreferencer.processRasterChart(
-						file.name,
-						tiffBuffer,
-						tfwText
-					);
-					chartStore.addChart(overlay);
-				} catch (err: any) {
-					alert(`Error reading ZIP chart: ${err?.message || err}`);
+		chartStore.isLoadingChart = true;
+		chartStore.errorMessage = null;
+
+		try {
+			// 1. Process ZIP archives
+			for (const file of fileArr) {
+				if (file.name.toLowerCase().endsWith('.zip')) {
+					try {
+						const arrayBuffer = await file.arrayBuffer();
+						const { tiffBuffer, tfwText } = await chartGeoreferencer.unpackZipChart(arrayBuffer);
+						const overlay = await chartGeoreferencer.processRasterChart(
+							file.name,
+							tiffBuffer,
+							tfwText
+						);
+						chartStore.addChart(overlay);
+					} catch (err: any) {
+						chartStore.errorMessage = `Error reading ZIP chart: ${err?.message || err}`;
+					}
 				}
 			}
-		}
 
-		const tifs = fileArr.filter(
-			(f) => f.name.toLowerCase().endsWith('.tif') || f.name.toLowerCase().endsWith('.tiff')
-		);
-		const tfws = fileArr.filter((f) => f.name.toLowerCase().endsWith('.tfw'));
-
-		for (const tif of tifs) {
-			const base = tif.name.replace(/\.[^/.]+$/, '');
-			const matchTfw = tfws.find(
-				(tfw) => tfw.name.replace(/\.[^/.]+$/, '').toLowerCase() === base.toLowerCase()
+			// 2. Process TIF/TIFF files (with matching TFW or standalone GeoTIFF)
+			const tifs = fileArr.filter(
+				(f) => f.name.toLowerCase().endsWith('.tif') || f.name.toLowerCase().endsWith('.tiff')
 			);
-			if (matchTfw) {
+			const tfws = fileArr.filter((f) => f.name.toLowerCase().endsWith('.tfw'));
+
+			for (const tif of tifs) {
+				const base = tif.name.replace(/\.[^/.]+$/, '');
+				const matchTfw = tfws.find(
+					(tfw) => tfw.name.replace(/\.[^/.]+$/, '').toLowerCase() === base.toLowerCase()
+				);
 				try {
 					const tiffBuffer = await tif.arrayBuffer();
-					const tfwText = await matchTfw.text();
+					const tfwText = matchTfw ? await matchTfw.text() : '';
 					const overlay = await chartGeoreferencer.processRasterChart(
 						tif.name,
 						tiffBuffer,
@@ -55,9 +60,11 @@
 					);
 					chartStore.addChart(overlay);
 				} catch (err: any) {
-					alert(`Error reading chart pair: ${err?.message || err}`);
+					chartStore.errorMessage = `Error reading chart: ${err?.message || err}`;
 				}
 			}
+		} finally {
+			chartStore.isLoadingChart = false;
 		}
 	}
 
