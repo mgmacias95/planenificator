@@ -116,4 +116,12 @@ WARNING:root:Semi circular rule not followed for leg Villaviciosa de Córdoba (T
 
 Create paths using Google Earth and export them as kml. Pro tip: you can create overlays in Google Earth Pro to see the official VFR charts while creating your route plan.
 
-* Spain VFR charts: https://aip.enaire.es/AIP/CartasInsigniaImpresas-es.html
+---
+
+## Data Licensing & Attributions
+
+Planenificator bundles and utilizes open geographic and aeronautical datasets for 100% offline flight planning:
+
+- **GeoNames**: Spanish municipal and populated settlement gazetteer data is provided by [GeoNames](https://www.geonames.org/) under the [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) license.
+- **OurAirports**: Spanish aerodrome, airstrip, and heliport data is sourced from [OurAirports](https://ourairports.com/data/) (Dedicated to the Public Domain / CC0).
+

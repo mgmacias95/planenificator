@@ -1,4 +1,12 @@
 __pycache__/
+*.pyc
 .venv/
-.git/
-.gemini
+venv/
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+Thumbs.db
+.gemini/
+
