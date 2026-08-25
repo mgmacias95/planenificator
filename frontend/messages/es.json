@@ -58,5 +58,19 @@
 	"loading_step_route": "Resolviendo puntos y perfil de ruta",
 	"loading_step_weather": "Obteniendo datos de meteorología y viento",
 	"loading_step_notams": "Consultando NOTAMs y espacio aéreo ENAIRE",
-	"loading_step_navlog": "Calculando registro de navegación y tiempos"
+	"loading_step_navlog": "Calculando registro de navegación y tiempos",
+	"profile_airframe_label": "Aeronave / Perfil",
+	"profile_default_presets": "Perfiles Predeterminados",
+	"profile_custom_profiles": "Perfiles Personalizados",
+	"profile_add_title": "Nuevo Perfil de Aeronave",
+	"profile_edit_title": "Editar Perfil de Aeronave",
+	"profile_name_label": "Nombre de Aeronave / Perfil",
+	"profile_name_placeholder": "ej. Tecnam P2002 Sierra (EC-XYZ)",
+	"profile_save_btn": "Guardar Perfil",
+	"profile_new_btn": "Nuevo Perfil",
+	"profile_edit_btn": "Editar Perfil",
+	"profile_delete_btn": "Eliminar Perfil",
+	"profile_delete_confirm": "¿Eliminar el perfil personalizado \"{name}\"?",
+	"profile_save_as_new": "Guardar como Nuevo Perfil",
+	"profile_update_saved": "Actualizar Perfil"
 }

@@ -22,7 +22,9 @@ export class AircraftProfilesState {
 
 	isCustomSelected = $derived<boolean>(this.selectedProfileId === 'custom');
 
-	isCurrentCustomProfile = $derived<boolean>(Boolean(this.selectedProfile?.isCustom));
+	isCurrentCustomProfile = $derived<boolean>(
+		Boolean(this.selectedProfile?.isCustom)
+	);
 
 	async init(): Promise<void> {
 		if (this.isLoaded) return;
@@ -37,37 +39,20 @@ export class AircraftProfilesState {
 		}
 	}
 
-	applySavedAircraftProfile(aircraftProfileId?: string): void {
-		if (aircraftProfileId && this.allProfiles.some((p) => p.id === aircraftProfileId)) {
-			this.selectedProfileId = aircraftProfileId;
-			flightPlanStore.aircraftProfileId = aircraftProfileId;
-		} else {
-			this.syncWithCurrentFlightPlan();
-		}
-	}
-
 	syncWithCurrentFlightPlan(): void {
 		const current = flightPlanStore.profile;
 		// Check if matches the currently selected profile
 		if (this.selectedProfile && this.matchesProfile(current, this.selectedProfile)) {
-			flightPlanStore.aircraftProfileId = this.selectedProfile.id;
 			return;
 		}
 		// Otherwise check if matches any other profile
 		const match = this.allProfiles.find((p) => this.matchesProfile(current, p));
 		if (match) {
 			this.selectedProfileId = match.id;
-			flightPlanStore.aircraftProfileId = match.id;
-		} else if (!this.selectedProfile) {
-			this.selectedProfileId = 'lsa';
-			flightPlanStore.aircraftProfileId = 'lsa';
 		}
 	}
 
-	matchesProfile(
-		flightProfile: FlightProfile,
-		aircraftProfile: AircraftPerformanceProfile
-	): boolean {
+	matchesProfile(flightProfile: FlightProfile, aircraftProfile: AircraftPerformanceProfile): boolean {
 		return (
 			flightProfile.cruiseTas === aircraftProfile.cruiseTas &&
 			flightProfile.climbVy === aircraftProfile.climbVy &&
@@ -80,7 +65,6 @@ export class AircraftProfilesState {
 		const profile = this.allProfiles.find((p) => p.id === id);
 		if (profile) {
 			this.selectedProfileId = id;
-			flightPlanStore.aircraftProfileId = id;
 			flightPlanStore.updateProfile({
 				cruiseTas: profile.cruiseTas,
 				climbVy: profile.climbVy,
@@ -128,7 +112,6 @@ export class AircraftProfilesState {
 		}
 
 		this.selectedProfileId = newProfile.id;
-		flightPlanStore.aircraftProfileId = newProfile.id;
 		flightPlanStore.updateProfile({
 			cruiseTas: newProfile.cruiseTas,
 			climbVy: newProfile.climbVy,

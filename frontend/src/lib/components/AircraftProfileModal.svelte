@@ -92,9 +92,7 @@
 
 			<form onsubmit={handleSubmit} class="space-y-4">
 				{#if errorMessage}
-					<div
-						class="rounded-md border border-rose-800/60 bg-rose-950/50 p-2 text-xs text-rose-300"
-					>
+					<div class="rounded-md border border-rose-800/60 bg-rose-950/50 p-2 text-xs text-rose-300">
 						{errorMessage}
 					</div>
 				{/if}
@@ -116,7 +114,7 @@
 				</div>
 
 				<!-- Actions -->
-				<div class="flex justify-end gap-2 border-t border-slate-800 pt-2">
+				<div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
 					<button
 						type="button"
 						onclick={onCancel}

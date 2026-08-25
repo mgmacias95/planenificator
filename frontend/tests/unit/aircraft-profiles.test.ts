@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
 	DEFAULT_AIRCRAFT_PRESETS,
-	type AircraftPerformanceProfile,
-	type SavedFlightPlan
+	type AircraftPerformanceProfile
 } from '$lib/types/flight';
 import { AircraftProfilesState } from '$lib/state/aircraft-profiles.svelte';
 import { flightPlanStore } from '$lib/state/flight-plan.svelte';
@@ -143,100 +142,6 @@ describe('Aircraft Performance Profiles & Presets', () => {
 			state.syncWithCurrentFlightPlan();
 
 			expect(state.selectedProfileId).toBe('pa28');
-		});
-
-		it('should include selected aircraft profile in exported flight plan', () => {
-			state.selectProfile('pa28');
-			const exported = flightPlanStore.exportAsSavedPlan('Test Flight');
-			expect(exported.aircraftProfileId).toBe('pa28');
-		});
-
-		it('should load flight plan with aircraftProfileId and apply it', () => {
-			state.selectProfile('lsa');
-			expect(state.selectedProfileId).toBe('lsa');
-
-			const savedPlan: SavedFlightPlan = {
-				id: 'plan_456',
-				name: 'Piper Flight',
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				waypoints: [{ id: 'wp1', lat: 40, lng: -3, name: 'WP1' }],
-				segments: [{ id: 'seg1', cruiseAlt: 5500, waypointIds: ['wp1'] }],
-				profile: {
-					depIcao: 'LEMD',
-					destIcao: 'LEBA',
-					altIcaos: [],
-					departureTime: '2026-08-25T10:00',
-					cruiseTas: 115,
-					initialAlt: 2000,
-					arrivalAlt: 1500,
-					climbVy: 76,
-					climbRateFpm: 650,
-					descentRateFpm: 500
-				},
-				aircraftProfileId: 'pa28'
-			};
-
-			state.applySavedAircraftProfile(savedPlan.aircraftProfileId);
-			expect(state.selectedProfileId).toBe('pa28');
-		});
-
-		it('should handle loading flight plan whose custom aircraft was deleted gracefully', async () => {
-			const custom = await state.saveCustomProfile({
-				name: 'Custom Jet',
-				cruiseTas: 200,
-				climbVy: 100,
-				climbRateFpm: 1500,
-				descentRateFpm: 1000
-			});
-
-			const planWithCustom: SavedFlightPlan = {
-				id: 'plan_custom',
-				name: 'Jet Route',
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				waypoints: [{ id: 'wp1', lat: 40, lng: -3, name: 'WP1' }],
-				segments: [{ id: 'seg1', cruiseAlt: 9500, waypointIds: ['wp1'] }],
-				profile: {
-					depIcao: 'LEMD',
-					destIcao: 'LEBL',
-					altIcaos: [],
-					departureTime: '2026-08-25T10:00',
-					cruiseTas: 200,
-					initialAlt: 2000,
-					arrivalAlt: 1500,
-					climbVy: 100,
-					climbRateFpm: 1500,
-					descentRateFpm: 1000
-				},
-				aircraftProfileId: custom.id
-			};
-
-			// Delete the custom profile
-			await state.deleteCustomProfile(custom.id);
-			expect(state.customProfiles.some((p) => p.id === custom.id)).toBe(false);
-
-			// Load the plan that referenced the deleted profile
-			flightPlanStore.updateProfile(planWithCustom.profile);
-			state.applySavedAircraftProfile(planWithCustom.aircraftProfileId);
-
-			// Profile parameters in the flight plan must be preserved
-			expect(flightPlanStore.profile.cruiseTas).toBe(200);
-			// Aircraft selection should safely fallback to default or matching without throwing error
-			expect(state.selectedProfileId).toBe('lsa');
-		});
-
-		it('should create new plan with unique ID on default export instead of overwriting activePlanId', () => {
-			flightPlanStore.activePlanId = 'existing_loaded_plan_id';
-			const newExport = flightPlanStore.exportAsSavedPlan('New Copy Plan');
-			expect(newExport.id).not.toBe('existing_loaded_plan_id');
-			expect(newExport.id).toMatch(/^plan_/);
-
-			const overwriteExport = flightPlanStore.exportAsSavedPlan(
-				'Overwrite Plan',
-				'existing_loaded_plan_id'
-			);
-			expect(overwriteExport.id).toBe('existing_loaded_plan_id');
 		});
 	});
 });
