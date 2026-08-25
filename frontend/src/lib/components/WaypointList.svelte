@@ -122,16 +122,16 @@
 								<Icon name={seg.collapsed ? 'chevron-right' : 'chevron-down'} class="h-3.5 w-3.5" />
 							</button>
 
-							<span
-								class="inline-block h-2.5 w-2.5 rounded-full"
-								style:background-color={segColor}
+							<span class="inline-block h-2.5 w-2.5 rounded-full" style:background-color={segColor}
 							></span>
 
 							<span class="text-xs font-semibold text-white">
 								Segment {sIdx + 1}
 							</span>
 
-							<span class="rounded-xs bg-slate-950 px-1.5 py-0.5 font-mono text-[11px] font-medium text-cyan-300 border border-slate-800">
+							<span
+								class="rounded-xs border border-slate-800 bg-slate-950 px-1.5 py-0.5 font-mono text-[11px] font-medium text-cyan-300"
+							>
 								{seg.cruiseAlt} ft
 							</span>
 
@@ -188,7 +188,10 @@
 								<div class="space-y-1 rounded-md border border-amber-900/60 bg-amber-950/40 p-2">
 									{#each segNotices as notice (notice.advisoryMessage)}
 										<div class="flex items-start gap-1.5 text-[11px] text-amber-300">
-											<Icon name="alert-triangle" class="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+											<Icon
+												name="alert-triangle"
+												class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400"
+											/>
 											<span class="leading-tight">{notice.advisoryMessage}</span>
 										</div>
 									{/each}
@@ -231,7 +234,7 @@
 
 											<div class="flex shrink-0 items-center gap-2">
 												<span
-													class="font-mono text-[9px] text-slate-500 opacity-60 group-hover:opacity-100 transition-opacity"
+													class="font-mono text-[9px] text-slate-500 opacity-60 transition-opacity group-hover:opacity-100"
 													title={`Lat: ${wp.lat.toFixed(4)}°, Lng: ${wp.lng.toFixed(4)}°`}
 												>
 													{wp.lat.toFixed(3)}, {wp.lng.toFixed(3)}

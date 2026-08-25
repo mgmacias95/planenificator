@@ -168,6 +168,7 @@ export interface SavedFlightPlan {
 	waypoints: Waypoint[];
 	segments: RouteSegment[];
 	profile: FlightProfile;
+	aircraftProfileId?: string; // ID of selected aircraft profile
 	summary?: {
 		depIcao: string;
 		destIcao: string;

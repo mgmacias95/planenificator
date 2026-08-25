@@ -25,7 +25,9 @@
 	<!-- HUD Header -->
 	<div class="flex items-center justify-between border-b border-slate-800 bg-slate-950 p-4">
 		<div class="flex items-center gap-2.5">
-			<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+			<div
+				class="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-950/80 text-cyan-400"
+			>
 				<Icon name="plane" class="h-5 w-5" />
 			</div>
 			<div>
@@ -35,7 +37,7 @@
 					</h1>
 					<!-- Demoted Engine Status Indicator Dot -->
 					<div
-						class="flex items-center gap-1 cursor-help"
+						class="flex cursor-help items-center gap-1"
 						title={`Engine Runtime: ${pyodideService.status.progressMessage} (${pyodideService.status.state})`}
 					>
 						<span
@@ -45,7 +47,8 @@
 							class:bg-amber-400={pyodideService.status.state === 'loading_wasm' ||
 								pyodideService.status.state === 'installing_packages' ||
 								pyodideService.status.state === 'loading_modules'}
-							class:animate-pulse={pyodideService.status.state !== 'ready' && pyodideService.status.state !== 'error'}
+							class:animate-pulse={pyodideService.status.state !== 'ready' &&
+								pyodideService.status.state !== 'error'}
 							class:bg-rose-500={pyodideService.status.state === 'error'}
 							class:bg-slate-600={pyodideService.status.state === 'uninitialized'}
 						></span>
@@ -149,7 +152,7 @@
 				type="button"
 				onclick={() => calculationStore.calculate()}
 				disabled={calculationStore.isCalculating || flightPlanStore.waypoints.length < 2}
-				class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-cyan-500 py-2.5 px-4 text-xs font-bold tracking-wider text-slate-950 uppercase shadow-md transition-all hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+				class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-xs font-bold tracking-wider text-slate-950 uppercase shadow-md transition-all hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
 			>
 				{#if calculationStore.isCalculating}
 					<Icon name="loader" class="h-4 w-4 text-slate-950" />

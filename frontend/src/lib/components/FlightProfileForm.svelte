@@ -100,7 +100,9 @@
 	<!-- Step 1: Aircraft Profile & Performance (Top) -->
 	<div class="space-y-2.5">
 		<div class="flex items-center justify-between">
-			<h3 class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+			<h3
+				class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
+			>
 				<Icon name="plane" class="h-3.5 w-3.5 text-cyan-400" />
 				<span>1. {m.section_performance()}</span>
 			</h3>
@@ -110,10 +112,7 @@
 				onclick={() => (isPerformanceExpanded = !isPerformanceExpanded)}
 				class="flex cursor-pointer items-center gap-1 text-[11px] text-cyan-400 transition-colors hover:text-cyan-300"
 			>
-				<Icon
-					name={isPerformanceExpanded ? 'chevron-down' : 'chevron-right'}
-					class="h-3 w-3"
-				/>
+				<Icon name={isPerformanceExpanded ? 'chevron-down' : 'chevron-right'} class="h-3 w-3" />
 				<span>{isPerformanceExpanded ? 'Hide Details' : 'Edit Performance'}</span>
 			</button>
 		</div>
@@ -142,14 +141,18 @@
 					onchange={handlePresetChange}
 					class="flex-1 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 				>
-					<optgroup label={m.profile_default_presets ? m.profile_default_presets() : 'Default Presets'}>
+					<optgroup
+						label={m.profile_default_presets ? m.profile_default_presets() : 'Default Presets'}
+					>
 						{#each DEFAULT_AIRCRAFT_PRESETS as preset (preset.id)}
 							<option value={preset.id}>{preset.name}</option>
 						{/each}
 					</optgroup>
 
 					{#if aircraftProfilesStore.customProfiles.length > 0}
-						<optgroup label={m.profile_custom_profiles ? m.profile_custom_profiles() : 'Custom Profiles'}>
+						<optgroup
+							label={m.profile_custom_profiles ? m.profile_custom_profiles() : 'Custom Profiles'}
+						>
 							{#each aircraftProfilesStore.customProfiles as customProf (customProf.id)}
 								<option value={customProf.id}>{customProf.name}</option>
 							{/each}
@@ -205,7 +208,9 @@
 					<div class="text-[11px] font-semibold text-cyan-400">Climb & Departure</div>
 					<div class="grid grid-cols-3 gap-2">
 						<div>
-							<label for="vy-input" class="mb-0.5 block text-[10px] text-slate-400">{m.label_vy()}</label>
+							<label for="vy-input" class="mb-0.5 block text-[10px] text-slate-400"
+								>{m.label_vy()}</label
+							>
 							<div class="relative flex items-center">
 								<input
 									id="vy-input"
@@ -214,7 +219,10 @@
 									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
-								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">kt</span>
+								<span
+									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
+									>kt</span
+								>
 							</div>
 						</div>
 
@@ -231,7 +239,10 @@
 									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-7 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
-								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">fpm</span>
+								<span
+									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
+									>fpm</span
+								>
 							</div>
 						</div>
 
@@ -247,7 +258,10 @@
 									bind:value={flightPlanStore.profile.initialAlt}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
-								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">ft</span>
+								<span
+									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
+									>ft</span
+								>
 							</div>
 						</div>
 					</div>
@@ -258,7 +272,9 @@
 					<div class="text-[11px] font-semibold text-cyan-400">Cruise & Descent</div>
 					<div class="grid grid-cols-3 gap-2">
 						<div>
-							<label for="tas-input" class="mb-0.5 block text-[10px] text-slate-400">{m.label_tas()}</label>
+							<label for="tas-input" class="mb-0.5 block text-[10px] text-slate-400"
+								>{m.label_tas()}</label
+							>
 							<div class="relative flex items-center">
 								<input
 									id="tas-input"
@@ -267,7 +283,10 @@
 									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
-								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">kt</span>
+								<span
+									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
+									>kt</span
+								>
 							</div>
 						</div>
 
@@ -284,7 +303,10 @@
 									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-7 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
-								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">fpm</span>
+								<span
+									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
+									>fpm</span
+								>
 							</div>
 						</div>
 
@@ -300,7 +322,10 @@
 									bind:value={flightPlanStore.profile.arrivalAlt}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
-								<span class="pointer-events-none absolute right-1.5 text-[10px] font-mono text-slate-400">ft</span>
+								<span
+									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
+									>ft</span
+								>
 							</div>
 						</div>
 					</div>
@@ -343,7 +368,9 @@
 	<!-- Step 2: Aerodromes, Timing & Fuel -->
 	<div class="space-y-2.5">
 		<div class="flex items-center justify-between">
-			<h3 class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+			<h3
+				class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
+			>
 				<Icon name="map-pin" class="h-3.5 w-3.5 text-cyan-400" />
 				<span>2. {m.section_aerodromes()}</span>
 			</h3>
@@ -432,4 +459,3 @@
 	onSave={handleSaveModalProfile}
 	onCancel={() => (isModalOpen = false)}
 />
-
