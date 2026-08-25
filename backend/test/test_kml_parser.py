@@ -1,3 +1,4 @@
+import tempfile
 from planenificator import kml_parser
 
 
@@ -18,3 +19,32 @@ def test_parse_kml_polygon_simple():
       (37.66768237534411, -4.72227629564874),
   ]
   assert kml_parser.parse_kml_polygon('test/test_data/route.kml') == expected_points
+
+
+def test_parse_kml_route_named_placemarks():
+  kml_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>LECU - Cuatro Vientos</name>
+      <Point>
+        <coordinates>-3.785,40.370,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Robledillo</name>
+      <Point>
+        <coordinates>-3.500,40.500,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>"""
+  with tempfile.NamedTemporaryFile('w', suffix='.kml', delete=False) as f:
+    f.write(kml_xml)
+    f.flush()
+    result = kml_parser.parse_kml_route(f.name)
+    assert result == [
+        (40.370, -3.785, 'LECU - Cuatro Vientos'),
+        (40.500, -3.500, 'Robledillo'),
+    ]
+

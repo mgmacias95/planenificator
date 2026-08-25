@@ -64,4 +64,32 @@ describe('Navigation Log Calculation and Formatting', () => {
 		expect(westNotice.isCompliant).toBe(false);
 		expect(westNotice.ruleDirection).toBe('WESTBOUND');
 	});
+
+	it('should maintain custom and gazetteer waypoint names in navlog legs', () => {
+		const leg1: NavLogEntry = {
+			legIndex: 1,
+			fromName: 'LECU - Cuatro Vientos',
+			toName: 'Guadalajara',
+			fromLat: 40.37,
+			fromLng: -3.785,
+			toLat: 40.63,
+			toLng: -3.16,
+			phase: 'CLIMB',
+			altitudeFt: 3500,
+			trueCourseDeg: 55,
+			windSpeedKt: 10,
+			windDirDeg: 270,
+			wcaDeg: -4,
+			trueHeadingDeg: 51,
+			tasKt: 70,
+			groundSpeedKt: 78,
+			distanceNm: 32.4,
+			eteMinutes: 24.9,
+			etaUtc: '10:24'
+		};
+
+		expect(leg1.fromName).toBe('LECU - Cuatro Vientos');
+		expect(leg1.toName).toBe('Guadalajara');
+	});
 });
+

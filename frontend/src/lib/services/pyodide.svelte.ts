@@ -53,6 +53,15 @@ export interface IPyodideService {
 	calculateRoute(input: PyodideCalculationInput): Promise<PyodideCalculationResult>;
 }
 
+function escapeXml(str: string): string {
+	return str
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&apos;');
+}
+
 export class PyodideService implements IPyodideService {
 	private pyodide: PyodideInterface | null = null;
 
@@ -180,11 +189,24 @@ export class PyodideService implements IPyodideService {
 			if (segWps.length >= 2) {
 				const kmlFileName = `segment_${idx + 1}.kml`;
 				const coordsStr = segWps.map((wp: Waypoint) => `${wp.lng},${wp.lat},0`).join(' ');
+				const placemarksXml = segWps
+					.map(
+						(wp: Waypoint) => `    <Placemark>
+      <name>${escapeXml(wp.name || `Waypoint_${wp.lat.toFixed(3)}_${wp.lng.toFixed(3)}`)}</name>
+      <Point>
+        <coordinates>${wp.lng},${wp.lat},0</coordinates>
+      </Point>
+    </Placemark>`
+					)
+					.join('\n');
+
 				const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
+    <name>Segment ${idx + 1}</name>
+${placemarksXml}
     <Placemark>
-      <name>Segment ${idx + 1}</name>
+      <name>Segment ${idx + 1} Path</name>
       <LineString>
         <coordinates>
           ${coordsStr}
