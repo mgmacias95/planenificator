@@ -62,6 +62,63 @@ function escapeXml(str: string): string {
 		.replace(/'/g, '&apos;');
 }
 
+export function parseAltitudeLimit(val: any): { fl: string; ft: number | null } {
+	if (val === undefined || val === null || val === '') return { fl: 'SFC', ft: 0 };
+	if (typeof val === 'string') {
+		val = val.trim().toUpperCase();
+		if (val === 'SFC' || val === 'GND') return { fl: 'SFC', ft: 0 };
+		if (val === 'UNL' || val === 'UNLIMITED') return { fl: 'UNL', ft: null };
+		if (val.startsWith('FL')) {
+			const num = parseInt(val.replace('FL', ''), 10);
+			if (!isNaN(num)) {
+				return { fl: `FL${String(num).padStart(3, '0')}`, ft: num * 100 };
+			}
+		}
+		const parsed = parseFloat(val);
+		if (isNaN(parsed)) return { fl: val, ft: null };
+		val = parsed;
+	}
+
+	if (val === 0) return { fl: 'SFC', ft: 0 };
+	if (val === 999 || val >= 99900) return { fl: 'UNL', ft: null };
+
+	if (val < 1000) {
+		const flNum = Math.round(val);
+		return {
+			fl: `FL${String(flNum).padStart(3, '0')}`,
+			ft: flNum * 100
+		};
+	}
+
+	const ftNum = Math.round(val);
+	const flNum = Math.round(val / 100);
+	return {
+		fl: `FL${String(flNum).padStart(3, '0')}`,
+		ft: ftNum
+	};
+}
+
+export function formatNotamAltitudeRange(lower: any, upper: any): string {
+	const low = parseAltitudeLimit(lower);
+	const up = parseAltitudeLimit(upper);
+
+	if (low.fl === 'SFC' && up.fl === 'UNL') {
+		return 'SFC – UNL';
+	}
+
+	const lowFtStr = low.ft !== null ? `${low.ft.toLocaleString('en-US')} ft` : '';
+	const upFtStr = up.ft !== null ? `${up.ft.toLocaleString('en-US')} ft` : 'UNL';
+
+	if (low.fl === 'SFC') {
+		return `${low.fl} – ${up.fl} (0 – ${upFtStr})`;
+	}
+	if (up.fl === 'UNL') {
+		return `${low.fl} – UNL (${lowFtStr} – UNL)`;
+	}
+
+	return `${low.fl} – ${up.fl} (${low.ft?.toLocaleString('en-US')} – ${up.ft?.toLocaleString('en-US')} ft)`;
+}
+
 export class PyodideService implements IPyodideService {
 	private pyodide: PyodideInterface | null = null;
 
@@ -368,17 +425,21 @@ ${placemarksXml}
 
 		// Route conflict NOTAMs
 		(notamData.route_conflicts || []).forEach((c: any) => {
+			const low = parseAltitudeLimit(c.LOWER_VAL);
+			const up = parseAltitudeLimit(c.UPPER_VAL);
+			const areaName = c.areaSactaName || c.itemA || 'En Route Corridor';
+
 			notams.push({
 				id: c.notamId || 'NOTAM',
-				location: c.areaSactaName || 'EN ROUTE',
+				location: c.areaSactaName || c.itemA || 'EN ROUTE',
 				validFrom: c.itemB ? new Date(c.itemB).toISOString() : '',
 				validTo: c.itemC ? new Date(c.itemC).toISOString() : '',
 				qCode: c.qcode || '',
 				purpose: 'Route Conflict',
-				lowerLimitFt: c.LOWER_VAL ? c.LOWER_VAL * 100 : undefined,
-				upperLimitFt: c.UPPER_VAL ? c.UPPER_VAL * 100 : undefined,
+				lowerLimitFt: low.ft ?? undefined,
+				upperLimitFt: up.ft ?? undefined,
 				text: c.itemE || '',
-				summary: `En Route Conflict FL${c.LOWER_VAL || 0} - FL${c.UPPER_VAL || 'UNL'}`,
+				summary: `${areaName} Airspace Restriction`,
 				severity: 'WARNING'
 			});
 		});
@@ -388,6 +449,23 @@ ${placemarksXml}
 			const c = Array.isArray(item) ? item[0] : item;
 			const warnType = Array.isArray(item) && item[1] ? item[1] : 'ALERT';
 			const role = Array.isArray(item) && item[2] ? item[2] : 'AERODROME';
+			const low = parseAltitudeLimit(c.LOWER_VAL);
+			const up = parseAltitudeLimit(c.UPPER_VAL);
+
+			const roleDesc =
+				role === 'DEPARTURE'
+					? 'Departure'
+					: role === 'ARRIVAL'
+						? 'Destination'
+						: role === 'ALTERNATE'
+							? 'Alternate'
+							: role;
+			const statusDesc =
+				warnType === 'CLOSED'
+					? 'Aerodrome Closed'
+					: warnType === 'LIMITED'
+						? 'Operational Limitations'
+						: warnType;
 
 			notams.push({
 				id: c.notamId || 'AD NOTAM',
@@ -396,8 +474,10 @@ ${placemarksXml}
 				validTo: c.itemC ? new Date(c.itemC).toISOString() : '',
 				qCode: c.qcode || '',
 				purpose: `${role} ${warnType}`,
+				lowerLimitFt: low.ft !== null && low.ft > 0 ? low.ft : undefined,
+				upperLimitFt: up.ft !== null && up.ft < 99900 ? up.ft : undefined,
 				text: c.itemE || '',
-				summary: `AD ${c.itemA || ''} [${role}] ${warnType}`,
+				summary: `${c.itemA || 'AD'} (${roleDesc}): ${statusDesc}`,
 				severity: warnType === 'CLOSED' ? 'WARNING' : 'CAUTION'
 			});
 		});

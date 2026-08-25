@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
 	import { flightPlanStorage } from '$lib/services/storage';
+	import Icon from './Icon.svelte';
 	import type { SavedFlightPlan } from '$lib/types/flight';
 	import * as m from '$lib/paraglide/messages';
 
@@ -47,7 +48,7 @@
 		<h3
 			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-300 uppercase"
 		>
-			<span>💾</span>
+			<Icon name="clipboard" class="h-3.5 w-3.5 text-cyan-400" />
 			<span>{m.projects_title()}</span>
 		</h3>
 		<span class="font-mono text-[11px] text-slate-400">
@@ -115,10 +116,10 @@
 						<button
 							type="button"
 							onclick={() => handleDeletePlan(plan.id)}
-							class="p-1 text-xs text-slate-500 transition-colors hover:text-rose-400"
+							class="p-1 text-slate-500 transition-colors hover:text-rose-400"
 							title="Delete Plan"
 						>
-							🗑️
+							<Icon name="trash" class="h-3.5 w-3.5" />
 						</button>
 					</div>
 				</div>
