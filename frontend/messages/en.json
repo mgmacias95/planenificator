@@ -52,7 +52,7 @@
 	"charts_active": "Active Overlays",
 	"projects_title": "Saved Flight Plans",
 	"projects_save_label": "Create New Plan",
-	"projects_empty": "No saved flight plans in IndexedDB storage yet.",
+	"projects_empty": "No saved flight plans found.",
 	"loading_title": "Calculating Route",
 	"loading_subtitle": "Computing operational flight plan, weather aloft, and airspace NOTAMs...",
 	"loading_step_route": "Resolving waypoints & route profile",

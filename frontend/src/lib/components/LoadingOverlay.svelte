@@ -14,7 +14,7 @@
 			id: 'route',
 			label: () => m.loading_step_route(),
 			icon: '📍',
-			detail: 'Parsing KML coordinates & resolving landmark fixes'
+			detail: 'Resolving route coordinates & landmark fixes'
 		},
 		{
 			id: 'weather',
@@ -168,7 +168,7 @@
 			<div class="mt-4 flex items-center justify-between text-[11px] text-slate-500">
 				<span class="flex items-center gap-1.5 font-mono">
 					<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-					WASM Aviation Engine
+					Flight Planning Engine
 				</span>
 				<span class="font-mono">Open-Meteo & ENAIRE Insignia</span>
 			</div>
