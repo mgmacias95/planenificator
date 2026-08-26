@@ -2,11 +2,26 @@
 
 // State variables
 let map = null;
-let waypoints = [];
-let routePolyline = null;
-let waypointMarkers = [];
+let routeSegments = [
+  { id: 'seg_1', cruiseAlt: 5500, waypoints: [], collapsed: false }
+];
+let activeSegmentIndex = 0;
+let segmentPolylines = []; // Array of Leaflet L.polyline instances, one per route segment
+let waypointMarkers = []; // Array of { wpId, marker }
 let pyodide = null;
 let loadedCharts = []; // Array of { id, name, overlay, bounds }
+
+// Segment high-visibility color palette
+const SEGMENT_COLORS = [
+  '#00f0ff', // Cyan (Segment 1)
+  '#ff007f', // Vibrant Pink / Magenta (Segment 2)
+  '#ffd600', // Electric Yellow (Segment 3)
+  '#00e676', // Bright Neon Green (Segment 4)
+  '#ff9100', // Orange (Segment 5)
+  '#b388ff', // Violet (Segment 6)
+  '#ff3d00', // Red-Orange (Segment 7)
+  '#00e5ff'  // Deep Cyan (Segment 8)
+];
 
 // Initialize Map
 function initMap() {
@@ -21,19 +36,12 @@ function initMap() {
     maxZoom: 18
   }).addTo(map);
 
-  // Route vector path line
-  routePolyline = L.polyline([], {
-    color: '#00f0ff',
-    weight: 4,
-    opacity: 0.8,
-    className: 'animated-route'
-  }).addTo(map);
-
   // Map click listeners
   map.on('dblclick', function(e) {
     addWaypoint(e.latlng.lat, e.latlng.lng);
   });
 }
+
 
 // 📦 Pyodide (Python WASM) Initialization
 async function initPyodideRuntime() {
@@ -69,12 +77,12 @@ async function initPyodideRuntime() {
       "meteo.py",
       "notams_spain.py",
       "osm.py",
-      "planenificator.py"
+      "planenificator.py",
+      "segments.py"
     ];
 
     for (const file of files) {
-      // Fetch relative to the /web directory (so up one level to find planenificator/)
-      const response = await fetch(`planenificator/${file}`);
+      const response = await fetch(`planenificator/${file}?v=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to load ${file} from static host`);
       }
@@ -82,13 +90,13 @@ async function initPyodideRuntime() {
       pyodide.FS.writeFile(`planenificator/${file}`, code);
     }
 
-    // Patch Python requests to redirect to browser fetch calls (solving CORS & WASM socket limits)
+
+    // Patch Python requests to redirect to browser fetch calls
     pyodide.runPython(`
       import pyodide_http
       pyodide_http.patch_all()
     `);
 
-    // Complete loading state
     statusDot.className = "indicator-dot ready";
     statusText.innerText = "System Ready (Offline)";
     document.getElementById('calculate-btn').disabled = false;
@@ -101,9 +109,144 @@ async function initPyodideRuntime() {
   }
 }
 
-// 📍 Waypoint Management
+// 📍 Modal Dialog Controller for Segment Altitudes
+let currentModalCallback = null;
+
+function showSegmentModal(title, defaultAlt, onConfirm) {
+  const modalEl = document.getElementById('segment-modal');
+  const titleEl = document.getElementById('segment-modal-title');
+  const altInput = document.getElementById('modal-alt-input');
+  
+  titleEl.innerText = title;
+  altInput.value = defaultAlt;
+  currentModalCallback = onConfirm;
+  
+  modalEl.classList.remove('hidden');
+  altInput.focus();
+  altInput.select();
+}
+
+function closeSegmentModal() {
+  const modalEl = document.getElementById('segment-modal');
+  modalEl.classList.add('hidden');
+  currentModalCallback = null;
+}
+
+function confirmSegmentModal() {
+  const altInput = document.getElementById('modal-alt-input');
+  const alt = parseInt(altInput.value.trim(), 10);
+  if (!isNaN(alt) && alt > 0) {
+    const cb = currentModalCallback;
+    closeSegmentModal();
+    if (cb) {
+      cb(alt);
+    }
+  } else {
+    alert("Please enter a valid positive cruise altitude in feet.");
+  }
+}
+
+function promptAddNewSegment() {
+  const defaultAlt = document.getElementById('cruise-alt-input').value || "5500";
+  showSegmentModal("✈️ New Route Segment", defaultAlt, (alt) => {
+    const newSegId = 'seg_' + (routeSegments.length + 1);
+    const newSeg = { id: newSegId, cruiseAlt: alt, waypoints: [], collapsed: false };
+
+    // Connect last point of previous segment if available
+    const prevSeg = routeSegments[routeSegments.length - 1];
+    if (prevSeg && prevSeg.waypoints.length > 0) {
+      const lastWp = prevSeg.waypoints[prevSeg.waypoints.length - 1];
+      newSeg.waypoints.push(lastWp);
+    }
+
+    // Collapse existing segments so the new active segment receives full focus
+    routeSegments.forEach(s => { s.collapsed = true; });
+
+    routeSegments.push(newSeg);
+    activeSegmentIndex = routeSegments.length - 1;
+    renderWaypointList();
+  });
+}
+
+function setActiveSegment(index) {
+  if (index >= 0 && index < routeSegments.length) {
+    activeSegmentIndex = index;
+    routeSegments.forEach((s, i) => {
+      s.collapsed = (i !== index);
+    });
+    renderWaypointList();
+  }
+}
+
+function toggleSegmentCollapse(index, event) {
+  if (event) event.stopPropagation();
+  if (index >= 0 && index < routeSegments.length) {
+    routeSegments[index].collapsed = !routeSegments[index].collapsed;
+    renderWaypointList();
+  }
+}
+
+function promptEditSegmentAlt(index) {
+  const currentAlt = routeSegments[index].cruiseAlt;
+  showSegmentModal(`✈️ Edit Segment ${index + 1} Altitude`, currentAlt, (alt) => {
+    routeSegments[index].cruiseAlt = alt;
+    renderWaypointList();
+  });
+}
+
+
+function isSegmentLocked(sIdx) {
+  for (let i = sIdx + 1; i < routeSegments.length; i++) {
+    if (routeSegments[i].waypoints.length > 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function removeSegment(index) {
+  if (routeSegments.length <= 1) return;
+  if (index < routeSegments.length - 1) return;
+  const removedSeg = routeSegments.splice(index, 1)[0];
+  
+  // Remove markers for waypoints unique to this segment
+  removedSeg.waypoints.forEach(wp => {
+    const isUsedElsewhere = routeSegments.some(s => s.waypoints.some(w => w.id === wp.id));
+    if (!isUsedElsewhere) {
+      const mIdx = waypointMarkers.findIndex(item => item.wpId === wp.id);
+      if (mIdx !== -1) {
+        map.removeLayer(waypointMarkers[mIdx].marker);
+        waypointMarkers.splice(mIdx, 1);
+      }
+    }
+  });
+
+  activeSegmentIndex = Math.max(0, Math.min(activeSegmentIndex, routeSegments.length - 1));
+  updateRouteVector();
+  renderWaypointList();
+}
+
 async function addWaypoint(lat, lon, name = null) {
-  const index = waypoints.length + 1;
+  if (routeSegments.length === 0) {
+    const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
+    routeSegments.push({ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [], collapsed: false });
+    activeSegmentIndex = 0;
+  }
+
+  // Prevent bifurcations: redirect waypoint to latest segment if active segment is locked
+  if (isSegmentLocked(activeSegmentIndex)) {
+    activeSegmentIndex = routeSegments.length - 1;
+    routeSegments.forEach((s, i) => {
+      s.collapsed = (i !== activeSegmentIndex);
+    });
+  }
+
+  const activeSeg = routeSegments[activeSegmentIndex];
+
+  let globalIndex = 0;
+  routeSegments.forEach(s => { globalIndex += s.waypoints.length; });
+  globalIndex += 1;
+
   const waypoint = {
     id: Date.now() + Math.random().toString(36).substr(2, 9),
     lat: lat,
@@ -111,18 +254,17 @@ async function addWaypoint(lat, lon, name = null) {
     name: name || `Loading waypoint name...`
   };
 
-  waypoints.push(waypoint);
+  activeSeg.waypoints.push(waypoint);
   updateRouteVector();
 
   // Create Marker
   const marker = L.marker([lat, lon], {
     draggable: true,
-    title: `WP ${index}`
+    title: `WP ${globalIndex}`
   }).addTo(map);
 
-  marker.bindPopup(`<b>WP ${index}:</b> ${waypoint.name}`).openPopup();
-  
-  // Listeners for marker changes
+  marker.bindPopup(`<b>WP:</b> ${waypoint.name}`).openPopup();
+
   marker.on('dragend', function(e) {
     const newLatLng = marker.getLatLng();
     waypoint.lat = newLatLng.lat;
@@ -132,36 +274,49 @@ async function addWaypoint(lat, lon, name = null) {
     resolveWaypointName(waypoint, marker);
   });
 
-  waypointMarkers.push(marker);
+  waypointMarkers.push({ wpId: waypoint.id, marker: marker });
 
-  // Render Sidebar Waypoint Item
   renderWaypointList();
-
-  // Resolve landmark geocoding in background asynchronously without blocking UI thread
   resolveWaypointName(waypoint, marker);
 }
 
-function removeWaypoint(id) {
-  const index = waypoints.findIndex(wp => wp.id === id);
-  if (index !== -1) {
-    // Remove marker from map
-    map.removeLayer(waypointMarkers[index]);
-    waypointMarkers.splice(index, 1);
-    waypoints.splice(index, 1);
-    
-    updateRouteVector();
-    renderWaypointList();
+function removeWaypoint(wpId) {
+  // Prevent removing shared boundary junction waypoints or waypoints in locked segments
+  const isSharedBoundary = routeSegments.some((seg, sIdx) => sIdx > 0 && seg.waypoints[0]?.id === wpId);
+  if (isSharedBoundary) return;
+
+  const targetSegIdx = routeSegments.findIndex(seg => seg.waypoints.some(wp => wp.id === wpId));
+  if (targetSegIdx !== -1 && isSegmentLocked(targetSegIdx)) return;
+
+  routeSegments.forEach(seg => {
+    const idx = seg.waypoints.findIndex(wp => wp.id === wpId);
+    if (idx !== -1) {
+      seg.waypoints.splice(idx, 1);
+    }
+  });
+
+  const mIdx = waypointMarkers.findIndex(item => item.wpId === wpId);
+  if (mIdx !== -1) {
+    map.removeLayer(waypointMarkers[mIdx].marker);
+    waypointMarkers.splice(mIdx, 1);
   }
+
+  updateRouteVector();
+  renderWaypointList();
 }
 
 function clearRoute() {
-  waypointMarkers.forEach(m => map.removeLayer(m));
+  waypointMarkers.forEach(m => map.removeLayer(m.marker));
   waypointMarkers = [];
-  waypoints = [];
+  segmentPolylines.forEach(p => map.removeLayer(p));
+  segmentPolylines = [];
+
+  const defaultAlt = parseInt(document.getElementById('cruise-alt-input').value, 10) || 5500;
+  routeSegments = [{ id: 'seg_1', cruiseAlt: defaultAlt, waypoints: [], collapsed: false }];
+  activeSegmentIndex = 0;
   updateRouteVector();
   renderWaypointList();
-  
-  // Reset outputs
+
   document.getElementById('print-pdf-btn').disabled = true;
   document.getElementById('notam-alerts-list').innerHTML = '<p class="empty-message">No NOTAM conflicts checked yet.</p>';
   document.getElementById('nav-log-table').querySelector('tbody').innerHTML = 
@@ -169,12 +324,36 @@ function clearRoute() {
 }
 
 function updateRouteVector() {
-  const latLngs = waypoints.map(wp => [wp.lat, wp.lng]);
-  routePolyline.setLatLngs(latLngs);
-  
-  // Fit bounds if we have 2+ points and no loaded chart overlay is active
-  if (latLngs.length >= 2 && loadedCharts.length === 0) {
-    map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
+  // Clear old segment polyline layers
+  segmentPolylines.forEach(p => map.removeLayer(p));
+  segmentPolylines = [];
+
+  const allBounds = [];
+
+  routeSegments.forEach((seg, sIdx) => {
+    if (seg.waypoints.length >= 2) {
+      const color = SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length];
+      const latLngs = seg.waypoints.map(wp => [wp.lat, wp.lng]);
+
+      const polyline = L.polyline(latLngs, {
+        color: color,
+        weight: 5,
+        opacity: 0.9,
+        className: 'animated-route'
+      }).addTo(map);
+
+      segmentPolylines.push(polyline);
+      allBounds.push(polyline.getBounds());
+    }
+  });
+
+  // Fit viewport to all route segments
+  if (allBounds.length > 0 && loadedCharts.length === 0) {
+    const combinedBounds = allBounds.reduce(
+      (acc, b) => acc.extend(b),
+      L.latLngBounds(allBounds[0].getSouthWest(), allBounds[0].getNorthEast())
+    );
+    map.fitBounds(combinedBounds, { padding: [50, 50] });
   }
 }
 
@@ -205,26 +384,83 @@ async function resolveWaypointName(waypoint, marker) {
   }
 
   // Update popup and lists
-  marker.getPopup().setContent(`<b>WP:</b> ${waypoint.name}`);
+  if (marker && marker.getPopup()) {
+    marker.getPopup().setContent(`<b>WP:</b> ${waypoint.name}`);
+  }
   renderWaypointList();
 }
 
 function renderWaypointList() {
   const listEl = document.getElementById('waypoint-list');
-  if (waypoints.length === 0) {
+  const hasWaypoints = routeSegments.some(s => s.waypoints.length > 0);
+  if (!hasWaypoints) {
     listEl.innerHTML = '<p class="empty-message">Double-click on the map or georeferenced chart to add waypoints.</p>';
     return;
   }
 
-  listEl.innerHTML = waypoints.map((wp, i) => `
-    <div class="waypoint-item" data-id="${wp.id}">
-      <span class="waypoint-index">${i + 1}</span>
-      <span class="waypoint-name">${wp.name}</span>
-      <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
-      <span class="waypoint-remove" onclick="removeWaypoint('${wp.id}')">✕</span>
-    </div>
-  `).join('');
+  let html = '';
+  let globalCount = 0;
+
+  routeSegments.forEach((seg, sIdx) => {
+    const isActive = (sIdx === activeSegmentIndex);
+    const isCollapsed = !!seg.collapsed;
+    const isLocked = isSegmentLocked(sIdx);
+    const segColor = SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length];
+
+    html += `
+      <div class="segment-group-card ${isActive ? 'active' : ''}" style="border-left: 4px solid ${segColor};">
+        <div class="segment-header-bar ${isActive ? 'active' : ''}" onclick="setActiveSegment(${sIdx})">
+          <span class="segment-title" style="color: ${segColor};">
+            <span class="collapse-toggle" onclick="event.stopPropagation(); toggleSegmentCollapse(${sIdx}, event)" title="${isCollapsed ? 'Expand Segment' : 'Collapse Segment'}">${isCollapsed ? '▶' : '▼'}</span>
+            <span class="seg-color-indicator" style="background-color: ${segColor}; box-shadow: 0 0 8px ${segColor};"></span>
+            Segment ${sIdx + 1} (${seg.cruiseAlt} ft) ${isLocked ? '<span style="font-size: 11px; margin-left: 4px;" title="Locked previous segment: route continues in subsequent segments">🔒</span>' : ''}
+          </span>
+          <div class="segment-actions">
+            <button class="btn-icon" onclick="event.stopPropagation(); promptEditSegmentAlt(${sIdx})" title="Edit Cruise Alt">✏️</button>
+            ${(routeSegments.length > 1 && sIdx === routeSegments.length - 1) ? `<button class="btn-icon" onclick="event.stopPropagation(); removeSegment(${sIdx})" title="Remove Segment">🗑️</button>` : ''}
+          </div>
+        </div>
+        <div class="segment-waypoints-container ${isCollapsed ? 'collapsed' : ''}">
+    `;
+
+    if (seg.waypoints.length === 0) {
+      html += `<p class="empty-message" style="padding: 6px;">No waypoints in segment. Double-click map to add.</p>`;
+    } else {
+      seg.waypoints.forEach((wp, wIdx) => {
+        const isSharedFromPrev = (sIdx > 0 && wIdx === 0);
+        if (!isSharedFromPrev) {
+          globalCount++;
+        }
+
+        const actionHtml = isLocked
+          ? '<span style="font-size: 11px; opacity: 0.6; padding: 2px;" title="Waypoints in previous segments are locked">🔒</span>'
+          : (isSharedFromPrev
+              ? '<span style="font-size: 11px; opacity: 0.6; padding: 2px;" title="Segment junction waypoint">🔗</span>'
+              : `<span class="waypoint-remove" onclick="event.stopPropagation(); removeWaypoint('${wp.id}')" title="Remove Waypoint">✕</span>`);
+
+        html += `
+          <div class="waypoint-item ${isSharedFromPrev ? 'shared-boundary' : ''}" data-id="${wp.id}">
+            <span class="waypoint-index" style="background-color: ${segColor}; color: #0b0f19;">${isSharedFromPrev ? '🔗' : globalCount}</span>
+            <span class="waypoint-name" title="${wp.name}">${wp.name} ${isSharedFromPrev ? '<small style="color: var(--text-muted); font-size: 10px;">(From Seg ' + sIdx + ')</small>' : ''}</span>
+            <span class="waypoint-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</span>
+            ${actionHtml}
+          </div>
+        `;
+      });
+    }
+
+    html += `
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
 }
+
+
+
+
 
 // 📂 Chart File Drop & Parsing (Unzipping VFR charts & reading TFW World Files)
 async function setupChartDropZone() {
@@ -280,6 +516,17 @@ const GeotiffWarpedTileLayer = L.GridLayer.extend({
     this.scale = options.scale;
     this.isCanaries = options.isCanaries;
     this.crs = options.isCanaries ? "ENAIRE:GC" : "ENAIRE:LE";
+    
+    // Check if the world file coordinates are projected (meters in LCC) vs geographic (WGS84 degrees)
+    const { originX, originY } = this.tfwParams;
+    this.isProjected = Math.abs(originX) > 180 || Math.abs(originY) > 90;
+
+    // Pre-cache pixel data from source canvas for high-performance per-pixel reprojection
+    const ctx = this.sourceCanvas.getContext('2d');
+    this.sourceImageData = ctx.getImageData(0, 0, this.sourceCanvas.width, this.sourceCanvas.height);
+    this.sourcePixels = this.sourceImageData.data;
+    this.sourceWidth = this.sourceCanvas.width;
+    this.sourceHeight = this.sourceCanvas.height;
   },
 
   createTile: function(coords, done) {
@@ -287,54 +534,125 @@ const GeotiffWarpedTileLayer = L.GridLayer.extend({
     tile.width = 256;
     tile.height = 256;
     const ctx = tile.getContext('2d');
+    const tileImageData = ctx.createImageData(256, 256);
+    const tilePixels = tileImageData.data;
 
-    // 1. Get LatLng bounds of the tile
-    const tileBounds = this._tileCoordsToBounds(coords);
-    const swLatLng = tileBounds.getSouthWest();
-    const neLatLng = tileBounds.getNorthEast();
+    const srcPixels = this.sourcePixels;
+    const srcW = this.sourceWidth;
+    const srcH = this.sourceHeight;
+    const { originX, originY, pixelScaleX, pixelScaleY, rotationX = 0, rotationY = 0 } = this.tfwParams;
+    const scale = this.scale;
+    const crs = this.crs;
+    const isProjected = this.isProjected;
 
-    try {
-      // 2. Project tile corners to the LCC coordinate system (meters)
-      const [x_sw, y_sw] = proj4("WGS84", this.crs, [swLatLng.lng, swLatLng.lat]);
-      const [x_ne, y_ne] = proj4("WGS84", this.crs, [neLatLng.lng, neLatLng.lat]);
+    // Calculate determinant for TFW matrix inverse
+    const det = pixelScaleX * pixelScaleY - rotationX * rotationY;
+    const hasRotation = Math.abs(rotationX) > 1e-9 || Math.abs(rotationY) > 1e-9;
 
-      // 3. Map Easting/Northing meters to original TIFF pixel coordinates
-      const { originX, originY, pixelScaleX, pixelScaleY } = this.tfwParams;
-      
-      const px_left   = (x_sw - originX) / pixelScaleX;
-      const px_right  = (x_ne - originX) / pixelScaleX;
-      const py_top    = (y_ne - originY) / pixelScaleY;
-      const py_bottom = (y_sw - originY) / pixelScaleY;
+    // Grid sampling: divide 256x256 tile into 8x8 cells (32x32 px per cell)
+    const GRID_SIZE = 8;
+    const CELL_SIZE = 32;
 
-      // 4. Map original pixel coordinates to downsampled canvas coordinates
-      const sx = px_left * this.scale;
-      const sy = py_top * this.scale;
-      const sw = (px_right - px_left) * this.scale;
-      const sh = (py_bottom - py_top) * this.scale;
+    const gridSX = new Float32Array(81);
+    const gridSY = new Float32Array(81);
 
-      const sx_clean = Math.min(sx, sx + sw);
-      const sy_clean = Math.min(sy, sy + sh);
-      const sw_clean = Math.abs(sw);
-      const sh_clean = Math.abs(sh);
+    let tileHasData = false;
 
-      // Check overlap with the downsampled canvas bounds
-      const canvasWidth = this.sourceCanvas.width;
-      const canvasHeight = this.sourceCanvas.height;
+    for (let gy = 0; gy <= GRID_SIZE; gy++) {
+      const ty = gy * CELL_SIZE;
+      const mapY = coords.y * 256 + (ty === 256 ? 255.999 : ty);
+      for (let gx = 0; gx <= GRID_SIZE; gx++) {
+        const tx = gx * CELL_SIZE;
+        const mapX = coords.x * 256 + (tx === 256 ? 255.999 : tx);
 
-      // If no overlap, return empty tile
-      if (sx_clean + sw_clean < 0 || sx_clean > canvasWidth || sy_clean + sh_clean < 0 || sy_clean > canvasHeight) {
-        setTimeout(() => done(null, tile), 0);
-        return tile;
+        // Exact WGS84 coordinates for this point on the Web Mercator tile at current zoom level
+        const latLng = L.CRS.EPSG3857.pointToLatLng(L.point(mapX, mapY), coords.z);
+        
+        let x_m, y_m;
+        if (isProjected) {
+          [x_m, y_m] = proj4("WGS84", crs, [latLng.lng, latLng.lat]);
+        } else {
+          x_m = latLng.lng;
+          y_m = latLng.lat;
+        }
+
+        const dx = x_m - originX;
+        const dy = y_m - originY;
+
+        let px_orig, py_orig;
+        if (!hasRotation) {
+          px_orig = dx / pixelScaleX;
+          py_orig = dy / pixelScaleY;
+        } else {
+          px_orig = (dx * pixelScaleY - dy * rotationX) / det;
+          py_orig = (dy * pixelScaleX - dx * rotationY) / det;
+        }
+
+        const sx = px_orig * scale;
+        const sy = py_orig * scale;
+
+        const idx = gy * 9 + gx;
+        gridSX[idx] = sx;
+        gridSY[idx] = sy;
+
+        if (sx >= 0 && sx < srcW && sy >= 0 && sy < srcH) {
+          tileHasData = true;
+        }
       }
-
-      // Draw the sub-region of our downsampled canvas onto the tile
-      ctx.drawImage(this.sourceCanvas, sx_clean, sy_clean, sw_clean, sh_clean, 0, 0, 256, 256);
-      setTimeout(() => done(null, tile), 0);
-
-    } catch (err) {
-      setTimeout(() => done(null, tile), 0);
     }
 
+    if (!tileHasData) {
+      setTimeout(() => done(null, tile), 0);
+      return tile;
+    }
+
+    // Bilinear interpolation across cell grid vertices to render all pixels in tile
+    let tileIdx = 0;
+    for (let gy = 0; gy < GRID_SIZE; gy++) {
+      const rowStart = gy * 9;
+      for (let cy = 0; cy < CELL_SIZE; cy++) {
+        const v = cy / CELL_SIZE;
+        const invV = 1.0 - v;
+
+        for (let gx = 0; gx < GRID_SIZE; gx++) {
+          const v00 = rowStart + gx;
+          const v10 = v00 + 1;
+          const v01 = v00 + 9;
+          const v11 = v01 + 1;
+
+          const sx0 = gridSX[v00] * invV + gridSX[v01] * v;
+          const sx1 = gridSX[v10] * invV + gridSX[v11] * v;
+          const sy0 = gridSY[v00] * invV + gridSY[v01] * v;
+          const sy1 = gridSY[v10] * invV + gridSY[v11] * v;
+
+          const dSX = (sx1 - sx0) / CELL_SIZE;
+          const dSY = (sy1 - sy0) / CELL_SIZE;
+
+          let curSX = sx0;
+          let curSY = sy0;
+
+          for (let cx = 0; cx < CELL_SIZE; cx++) {
+            const isx = Math.floor(curSX);
+            const isy = Math.floor(curSY);
+
+            if (isx >= 0 && isx < srcW && isy >= 0 && isy < srcH) {
+              const srcIdx = (isy * srcW + isx) * 4;
+              tilePixels[tileIdx]     = srcPixels[srcIdx];
+              tilePixels[tileIdx + 1] = srcPixels[srcIdx + 1];
+              tilePixels[tileIdx + 2] = srcPixels[srcIdx + 2];
+              tilePixels[tileIdx + 3] = srcPixels[srcIdx + 3];
+            }
+
+            curSX += dSX;
+            curSY += dSY;
+            tileIdx += 4;
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(tileImageData, 0, 0);
+    setTimeout(() => done(null, tile), 0);
     return tile;
   }
 });
@@ -497,23 +815,26 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
   let sw, ne;
 
   if (isProjected) {
-    const tlCoords = projectLccToWgs84(originX, originY, isCanaries);
-    const brCoords = projectLccToWgs84(
-      originX + (pixelScaleX * width), 
-      originY + (pixelScaleY * height), 
-      isCanaries
-    );
+    const corners = [
+      projectLccToWgs84(originX, originY, isCanaries),
+      projectLccToWgs84(originX + (pixelScaleX * width), originY, isCanaries),
+      projectLccToWgs84(originX, originY + (pixelScaleY * height), isCanaries),
+      projectLccToWgs84(originX + (pixelScaleX * width), originY + (pixelScaleY * height), isCanaries)
+    ];
 
-    sw = L.latLng(brCoords.lat, tlCoords.lng);
-    ne = L.latLng(tlCoords.lat, brCoords.lng);
+    const lats = corners.map(c => c.lat);
+    const lngs = corners.map(c => c.lng);
+
+    sw = L.latLng(Math.min(...lats) - 0.1, Math.min(...lngs) - 0.1);
+    ne = L.latLng(Math.max(...lats) + 0.1, Math.max(...lngs) + 0.1);
   } else {
     const latSW = originY + (pixelScaleY * height);
     const lngSW = originX;
     const latNE = originY;
     const lngNE = originX + (pixelScaleX * width);
     
-    sw = L.latLng(latSW, lngSW);
-    ne = L.latLng(latNE, lngNE);
+    sw = L.latLng(Math.min(latSW, latNE) - 0.1, Math.min(lngSW, lngNE) - 0.1);
+    ne = L.latLng(Math.max(latSW, latNE) + 0.1, Math.max(lngSW, lngNE) + 0.1);
   }
 
   const bounds = L.latLngBounds(sw, ne);
@@ -521,11 +842,30 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
 
   // Decode and resample the TIFF image directly to the target canvas size
   console.log("Decoding and resampling TIFF to target size...");
-  const rgbData = await image.readRGB({
-    width: canvasWidth,
-    height: canvasHeight,
-    resampleMethod: 'bilinear'
-  });
+  let rgbData;
+  try {
+    rgbData = await image.readRGB({
+      width: canvasWidth,
+      height: canvasHeight,
+      resampleMethod: 'bilinear'
+    });
+  } catch (err) {
+    console.warn("image.readRGB failed, falling back to readRasters:", err);
+    const rasters = await image.readRasters({
+      width: canvasWidth,
+      height: canvasHeight,
+      resampleMethod: 'bilinear'
+    });
+    const r = rasters[0];
+    const g = rasters[1] || r;
+    const b = rasters[2] || r;
+    rgbData = new Uint8Array(canvasWidth * canvasHeight * 3);
+    for (let k = 0, p = 0; k < r.length; k++, p += 3) {
+      rgbData[p] = r[k];
+      rgbData[p + 1] = g[k];
+      rgbData[p + 2] = b[k];
+    }
+  }
   
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -550,7 +890,7 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
   const tileLayer = new GeotiffWarpedTileLayer({
     sourceCanvas: canvas, // our downsampled canvas
     bounds: bounds, // clips requests to actual map sheet boundaries
-    tfwParams: { originX, originY, pixelScaleX, pixelScaleY },
+    tfwParams: { originX, originY, pixelScaleX, pixelScaleY, rotationX, rotationY },
     scale: scale, // downsampling scale factor
     isCanaries: isCanaries,
     opacity: 0.85,
@@ -573,17 +913,11 @@ async function displayGeoreferencedChart(name, tfwText, tiffBuffer) {
 
 // 📐 Flight calculations via Pyodide Wasm execution
 async function runFlightPlanningCalculations() {
-  if (waypoints.length < 2) {
-    alert("Please add at least two waypoints on the map first.");
-    return;
-  }
-
   const calculateBtn = document.getElementById('calculate-btn');
   calculateBtn.innerText = "Calculating...";
   calculateBtn.disabled = true;
 
   try {
-    const cruiseAlt = parseInt(document.getElementById('cruise-alt-input').value, 10);
     const tas = parseInt(document.getElementById('tas-input').value, 10);
     const initialAlt = parseInt(document.getElementById('initial-alt-input').value, 10);
     const arrivalAlt = parseInt(document.getElementById('arrival-alt-input').value, 10);
@@ -609,13 +943,43 @@ async function runFlightPlanningCalculations() {
     // Parse alternate codes
     const altAerodromes = alternatesText ? alternatesText.split(',').map(a => a.trim().toUpperCase()).filter(Boolean) : [];
 
-    // Prepare JSON waypoints payloads for the Python module
-    const pythonCoords = waypoints.map(wp => [wp.lat, wp.lng]);
-    const pythonNames = waypoints.map(wp => wp.name);
+    // Prepare multi-segment payloads by generating a KML file for each segment
+    const kmlPaths = [];
+    const cruiseAlts = [];
 
-    pyodide.globals.set("py_coords", pyodide.toPy(pythonCoords));
-    pyodide.globals.set("py_names", pyodide.toPy(pythonNames));
-    pyodide.globals.set("py_cruise_alt", cruiseAlt);
+    routeSegments.forEach((seg, idx) => {
+      if (seg.waypoints.length >= 2) {
+        const kmlFileName = `segment_${idx + 1}.kml`;
+        const coordsStr = seg.waypoints.map(wp => `${wp.lng},${wp.lat},0`).join(' ');
+        const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Segment ${idx + 1}</name>
+      <LineString>
+        <coordinates>
+          ${coordsStr}
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>`;
+        pyodide.FS.writeFile(kmlFileName, kmlContent);
+        kmlPaths.push(kmlFileName);
+        cruiseAlts.push(seg.cruiseAlt);
+      }
+    });
+
+    if (kmlPaths.length === 0) {
+      alert("Please add at least two waypoints to a segment first.");
+      calculateBtn.innerText = "Calculate Route";
+      calculateBtn.disabled = false;
+      return;
+    }
+
+    pyodide.globals.set("py_kmls", pyodide.toPy(kmlPaths));
+    pyodide.globals.set("py_cruise_alts", pyodide.toPy(cruiseAlts));
+
     pyodide.globals.set("py_tas", tas);
     pyodide.globals.set("py_initial_alt", initialAlt);
     pyodide.globals.set("py_arrival_alt", arrivalAlt);
@@ -627,19 +991,18 @@ async function runFlightPlanningCalculations() {
     pyodide.globals.set("py_dest", destAerodrome);
     pyodide.globals.set("py_alts", pyodide.toPy(altAerodromes));
 
-    // Call the python refactored functions using Pyodide
+    // Call python multi-segment calculation engine via Pyodide
     const results = pyodide.runPython(`
       import json
       import datetime
-      from planenificator.planenificator import generate_navigation_report_from_coords
+      import planenificator.segments
 
-      # Run navigation calculations
-      table, notam_data = generate_navigation_report_from_coords(
-          coords=py_coords,
-          point_names=py_names,
+      # Run navigation calculations across route segments
+      table, notam_data = planenificator.segments.generate_multi_segment_navigation_report(
+          kmls=list(py_kmls),
+          cruise_alts=list(py_cruise_alts),
           initial_alt=py_initial_alt,
           arrival_alt=py_arrival_alt,
-          cruise_alt=py_cruise_alt,
           tas=py_tas,
           vy=py_vy,
           rate_of_climb=py_climb_rate,
@@ -650,10 +1013,10 @@ async function runFlightPlanningCalculations() {
           alt_aerodromes=list(py_alts) if py_alts else None
       )
 
+
       # Convert outputs to serializable format
       serialized_table = []
       for row in table:
-          # Convert datetime objects to string representations
           str_row = [str(cell) for cell in row]
           serialized_table.append(str_row)
 
@@ -662,6 +1025,7 @@ async function runFlightPlanningCalculations() {
           "notam_data": notam_data
       })
     `);
+
 
     const resultData = JSON.parse(results);
     console.log("Calculation results received from Wasm:", resultData);
@@ -675,17 +1039,19 @@ async function runFlightPlanningCalculations() {
     // Populate print metadata panel
     const printMetaEl = document.getElementById('print-flight-meta');
     if (printMetaEl) {
+      const cruiseAltSummary = routeSegments.map((s, i) => `Seg ${i + 1}: ${s.cruiseAlt} ft`).join(', ');
       printMetaEl.innerHTML = `
         <div><strong>Departure Time:</strong><br>${new Date(depTimeStr).toLocaleString()}</div>
         <div><strong>DEP / DEST:</strong><br>${depAerodrome} / ${destAerodrome}</div>
         <div><strong>Alternates:</strong><br>${altAerodromes.join(', ') || 'None'}</div>
-        <div><strong>Cruise Alt:</strong><br>${cruiseAlt} ft</div>
+        <div><strong>Cruise Alt:</strong><br>${cruiseAltSummary}</div>
         <div><strong>Initial / Arrival Alt:</strong><br>${initialAlt} / ${arrivalAlt} ft</div>
         <div><strong>TAS:</strong><br>${tas} kts</div>
         <div><strong>Best Climb Vy:</strong><br>${vy} kts</div>
         <div><strong>Climb / Descent:</strong><br>${rateOfClimb} / ${rateOfDescent} fpm</div>
       `;
     }
+
 
     // Enable PDF download
     document.getElementById('print-pdf-btn').disabled = false;
@@ -1073,6 +1439,32 @@ window.addEventListener('DOMContentLoaded', () => {
   setupChartDropZone();
   initPyodideRuntime();
 
+  const addSegBtn = document.getElementById('add-segment-btn');
+  if (addSegBtn) {
+    addSegBtn.addEventListener('click', promptAddNewSegment);
+  }
+
+  // Modal dialog buttons & events
+  const confirmModalBtn = document.getElementById('modal-confirm-btn');
+  if (confirmModalBtn) confirmModalBtn.addEventListener('click', confirmSegmentModal);
+
+  const cancelModalBtn = document.getElementById('modal-cancel-btn');
+  if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeSegmentModal);
+
+  const closeModalBtn = document.getElementById('modal-close-btn');
+  if (closeModalBtn) closeModalBtn.addEventListener('click', closeSegmentModal);
+
+  const modalAltInput = document.getElementById('modal-alt-input');
+  if (modalAltInput) {
+    modalAltInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        confirmSegmentModal();
+      } else if (e.key === 'Escape') {
+        closeSegmentModal();
+      }
+    });
+  }
+
   // Set default departure date-time to current local time
   const now = new Date();
   const localOffset = now.getTimezoneOffset() * 60000;
@@ -1088,3 +1480,5 @@ window.addEventListener('DOMContentLoaded', () => {
   // Load online ENAIRE catalog list
   loadEnaireVFRChartsCatalog();
 });
+
+

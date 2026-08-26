@@ -46,72 +46,19 @@ def generate_navigation_report(
     logging.warning('No coordinates found.')
     return None
 
-  return generate_navigation_report_from_coords(
-      coords=coords,
-      point_names=None,
-      initial_alt=initial_alt,
-      arrival_alt=arrival_alt,
-      cruise_alt=cruise_alt,
-      tas=tas,
-      vy=vy,
-      rate_of_climb=rate_of_climb,
-      rate_of_descent=rate_of_descent,
-      flight_start_date=flight_start_date,
-      dep_aerodrome=dep_aerodrome,
-      dest_aerodrome=dest_aerodrome,
-      alt_aerodromes=alt_aerodromes
-  )
-
-
-def generate_navigation_report_from_coords(
-    coords: list[tuple[float, float]],
-    point_names: list[str] = None,
-    initial_alt: int = 2500,
-    arrival_alt: int = 2000,
-    cruise_alt: int = 5500,
-    tas: int = 80,
-    vy: int = 70,
-    rate_of_climb: int = 700,
-    rate_of_descent: int = 500,
-    flight_start_date: datetime.datetime = None,
-    dep_aerodrome: str = None,
-    dest_aerodrome: str = None,
-    alt_aerodromes: list[str] = None
-):
-  """Generates operational plan from a list of coordinates."""
-  if not coords:
-    logging.warning('No coordinates provided.')
-    return None
-
   start_time = flight_start_date
 
-  if not point_names:
-    logging.info(
-        'Processing %d points. This will take at least %d seconds...',
-        len(coords), len(coords)
-    )
-    point_names = []
-    for i, (lat, lon) in enumerate(coords):
-      name = osm.get_osm_landmark(lat, lon)
-      point_names.append(name)
-      time.sleep(1)
+  logging.info(
+      'Processing %d points. This will take at least %d seconds...',
+      len(coords), len(coords)
+  )
+  point_names = []
+  for i, (lat, lon) in enumerate(coords):
+    name = osm.get_osm_landmark(lat, lon)
+    point_names.append(name)
+    time.sleep(1)
 
   table = []
-  table.append([
-      'Waypoint',
-      'True course',
-      'Heading',
-      'Wind',
-      'Altitude',
-      # 'Magnetic Course',
-      'TAS',
-      'GS',
-      'Leg',
-      'ETE',
-      'ETA',
-      # 'Fuel',
-      # 'Remaining fuel'
-  ])
 
   total_traveled_distance, total_time = 0, 0
   # use a flag to control wether we are climbing or not
@@ -180,13 +127,13 @@ def generate_navigation_report_from_coords(
     wind_str = f"{met.wind_direction:.0f}° / {met.wind_speed:.1f} kt"
     table.append([
         point_names[i],
-        round(true_course, 1),
-        round(heading, 1),
+        round(true_course),
+        round(heading),
         wind_str,
         current_altitude,
         speed,
-        gs,
-        round(dist_nm, 2),
+        round(gs),
+        round(dist_nm),
         ete,
         flight_start_date,
     ])
@@ -198,7 +145,7 @@ def generate_navigation_report_from_coords(
   time_to_start_descent = flight_start_date - datetime.timedelta(minutes=descend_time)
   logging.debug('Time to start descent: %s', time_to_start_descent)
 
-  for row in reversed(table[1:]):
+  for row in reversed(table):
     if is_descending and row[-1] <= time_to_start_descent: 
       logging.debug('Reached TOD')
       row[0] += ' (TOD)'
@@ -209,10 +156,6 @@ def generate_navigation_report_from_coords(
   # update the altitude of the last row to display the altitude in which 
   # the route will be finished.
   table[-1][4] = arrival_alt
-
-  table.append(
-      ['Total', '', '', '', '', '', total_traveled_distance, total_time, '']
-  )
 
   # NOTAM checks
   notam_data = {
@@ -242,11 +185,12 @@ def generate_navigation_report_from_coords(
   if alt_aerodromes: ad_list.extend(alt_aerodromes)
   
   if ad_list:
-      logging.info(f"Consultando NOTAMs de aeródromos: {ad_list}...")
+      logging.info(f"Checking NOTAMs for aerodromes: {ad_list}...")
       ad_notams = notams.fetch_notams_by_aerodromes(ad_list)
       notam_data['all_aerodrome_notams'] = ad_notams
       notam_data['aerodrome_conflicts'] = notams.check_aerodrome_conflicts(
           ad_notams, dep_aerodrome, dest_aerodrome, alt_aerodromes, start_time, flight_start_date
       )
 
-  return table, notam_data
+  return table, notam_data, total_traveled_distance, total_time
+

@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Planenificator ✈️ - Serverless Flight Planner</title>
   
   <!-- Fonts -->
@@ -14,7 +17,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=14">
+
+
+
+
+
 </head>
 <body class="dark-theme">
 
@@ -72,12 +80,16 @@
       <section class="section route-section">
         <div class="section-title-row">
           <h2>📍 Route Waypoints</h2>
-          <button class="btn btn-danger btn-xs" id="clear-route-btn">Clear</button>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-primary btn-xs" id="add-segment-btn" title="Add a new route segment with custom cruise altitude">+ Segment</button>
+            <button class="btn btn-danger btn-xs" id="clear-route-btn">Clear</button>
+          </div>
         </div>
         <div class="waypoint-list" id="waypoint-list">
           <p class="empty-message">Double-click on the map or georeferenced chart to add waypoints.</p>
         </div>
       </section>
+
 
       <!-- Flight parameters & Actions -->
       <section class="section actions-section">
@@ -217,7 +229,35 @@
   <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.1/dist-browser/geotiff.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
 
+  <!-- Custom Segment Altitude Modal Dialog -->
+  <div id="segment-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="segment-modal-title">✈️ Set Cruise Altitude</h3>
+        <button class="modal-close-btn" id="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc" id="segment-modal-desc">Introduce cruise altitude for this route segment:</p>
+        <div class="input-group" style="margin-top: 14px;">
+          <label for="modal-alt-input">Cruise Altitude (ft)</label>
+          <input type="number" id="modal-alt-input" value="5500" step="500" min="500" max="45000">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="modal-confirm-btn">Save Segment</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Web App Script -->
-  <script src="app.js"></script>
+  <script src="app.js?v=14"></script>
+
+
+
+
+
 </body>
 </html>
+
+
