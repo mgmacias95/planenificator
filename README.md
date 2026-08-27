@@ -4,6 +4,8 @@ Planenificator is a serverless, interactive Web Application and CLI-based flight
 
 It allows pilots to plan their routes interactively on a map, overlay georeferenced ENAIRE VFR charts, fetch real-time weather forecasts to calculate headings and ground speeds, verify compliance with the semi-circular flight level rules, filter active NOTAMs to detect conflicts, and print a complete Operational Briefing package to PDF.
 
+Live version available at https://mgmacias95.github.io/planenificator/
+
 ---
 
 ## Features
