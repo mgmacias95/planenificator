@@ -1,4 +1,4 @@
-import type { WeatherForecast } from './weather-forecast';
+import type { PrecipitationForecast } from './weather-forecast';
 
 interface NormalizedForecastPoint {
 	x: number;
@@ -31,7 +31,7 @@ function gradientColor(value: number) {
 	);
 }
 
-function normalizedPoints(forecast: WeatherForecast, frameIndex: number) {
+function normalizedPoints(forecast: PrecipitationForecast, frameIndex: number) {
 	const { south, west, north, east } = forecast.bounds;
 	const latitudeSpan = Math.max(0.001, north - south);
 	const longitudeSpan = Math.max(0.001, east - west);
@@ -63,7 +63,7 @@ function interpolate(points: NormalizedForecastPoint[], x: number, y: number) {
 }
 
 export function renderForecastField(
-	forecast: WeatherForecast,
+	forecast: PrecipitationForecast,
 	frameIndex: number,
 	opacity: number
 ) {

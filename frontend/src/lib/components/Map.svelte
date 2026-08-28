@@ -15,6 +15,7 @@
 		type ForecastBounds,
 		type PrecipitationForecast
 	} from '$lib/services/weather-forecast';
+	import { renderForecastField } from '$lib/services/weather-forecast-field';
 	import type { Waypoint } from '$lib/types/flight';
 	import * as m from '$lib/paraglide/messages';
 	import Icon from './Icon.svelte';
@@ -36,7 +37,7 @@
 	let radarRefreshTimer: ReturnType<typeof setInterval> | null = null;
 	let forecastMoveTimer: ReturnType<typeof setTimeout> | null = null;
 	let radarLayer: L.TileLayer | null = null;
-	let forecastLayer: L.LayerGroup | null = null;
+	let forecastLayer: L.ImageOverlay | null = null;
 	let forecastAttributionVisible = false;
 	let lastAutoFitRouteKey = '';
 	let weatherMode = $state<'forecast' | 'radar'>('forecast');
@@ -213,43 +214,28 @@
 		};
 	}
 
-	function forecastColor(precipitation: number, probability: number) {
-		if (precipitation >= 7.5) return '#facc15';
-		if (precipitation >= 3) return '#f43f5e';
-		if (precipitation >= 1) return '#8b5cf6';
-		if (precipitation >= 0.2) return '#2563eb';
-		return probability >= 20 ? '#38bdf8' : '#60a5fa';
-	}
-
 	function updateForecastLayer() {
 		if (!map || !weatherEnabled || weatherMode !== 'forecast' || !forecast) return;
+		const image = renderForecastField(forecast, forecastFrameIndex, weatherOpacity);
+		const bounds = L.latLngBounds(
+			[forecast.bounds.south, forecast.bounds.west],
+			[forecast.bounds.north, forecast.bounds.east]
+		);
 		if (!forecastLayer) {
-			forecastLayer = L.layerGroup().addTo(map);
+			forecastLayer = L.imageOverlay(image, bounds, {
+				pane: 'weatherPane',
+				className: 'weather-forecast-field',
+				interactive: false
+			}).addTo(map);
 			if (!forecastAttributionVisible) {
 				map.attributionControl.addAttribution(
 					'<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Forecast by Open-Meteo</a>'
 				);
 				forecastAttributionVisible = true;
 			}
-		}
-		forecastLayer.clearLayers();
-		const radius = Math.max(66, Math.min(132, mapContainer.clientWidth / 5.2));
-
-		for (const point of forecast.points) {
-			const precipitation = point.precipitation[forecastFrameIndex] ?? 0;
-			const probability = point.precipitationProbability[forecastFrameIndex] ?? 0;
-			if (precipitation < 0.01 && probability < 15) continue;
-			const strength = Math.min(1, Math.max(probability / 100, precipitation / 5));
-			L.circleMarker([point.latitude, point.longitude], {
-				pane: 'weatherPane',
-				className: 'forecast-precipitation-cell',
-				radius,
-				stroke: false,
-				fill: true,
-				fillColor: forecastColor(precipitation, probability),
-				fillOpacity: (weatherOpacity / 100) * (0.18 + strength * 0.55),
-				interactive: false
-			}).addTo(forecastLayer);
+		} else {
+			forecastLayer.setUrl(image);
+			forecastLayer.setBounds(bounds);
 		}
 	}
 
@@ -1393,8 +1379,8 @@
 		mix-blend-mode: screen;
 	}
 
-	:global(.forecast-precipitation-cell) {
-		filter: blur(22px) saturate(1.35);
+	:global(.weather-forecast-field) {
+		filter: blur(8px) saturate(1.2) contrast(1.04);
 		mix-blend-mode: screen;
 	}
 

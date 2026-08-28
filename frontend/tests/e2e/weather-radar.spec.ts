@@ -63,7 +63,7 @@ test.describe('weather radar overlay', () => {
 			'true'
 		);
 		await expect(panel.getByText('Model precipitation · hourly · next 8 days')).toBeVisible();
-		await expect(page.locator('.forecast-precipitation-cell')).not.toHaveCount(0);
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
 		await expect(panel.getByRole('link', { name: 'Forecast data by Open-Meteo' })).toBeVisible();
 
 		const datePicker = panel.getByLabel('Forecast date and time (UTC)');
