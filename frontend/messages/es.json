@@ -76,5 +76,13 @@
 	"confirm_load_title": "¿Cargar Plan de Vuelo?",
 	"confirm_load_message": "Cargar \"{name}\" reemplazará tu ruta actual. Se perderán los cambios no guardados.",
 	"btn_cancel": "Cancelar",
-	"btn_confirm_load": "Cargar Plan"
+	"btn_confirm_load": "Cargar Plan",
+	"map_aria_label": "Mapa interactivo para planificar rutas VFR",
+	"map_add_waypoint": "Añadir punto",
+	"map_add_waypoint_help": "Activar o desactivar la colocación de puntos con un toque",
+	"map_center": "Centrar",
+	"map_touch_add_hint": "Toca el mapa para añadir un punto · arrastra para mover · pellizca para ampliar",
+	"map_click_add_hint": "Haz clic en el mapa para añadir un punto",
+	"map_touch_pan_hint": "Arrastra para mover · pellizca para ampliar",
+	"map_desktop_hint": "Haz doble clic en el mapa para añadir un punto"
 }

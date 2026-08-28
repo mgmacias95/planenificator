@@ -24,19 +24,21 @@
 	<title>Planenificator · Modern VFR Flight Planner</title>
 </svelte:head>
 
-<div class="no-print flex h-screen w-screen overflow-hidden bg-slate-950">
+<div
+	class="app-shell no-print flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 lg:flex-row"
+>
 	<!-- Sidebar HUD Drawer -->
 	<Sidebar />
 
 	<!-- Main Viewport Area -->
-	<main class="flex h-full flex-1 flex-col gap-3 overflow-hidden p-3">
+	<main class="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:gap-3 sm:p-3">
 		<!-- Map Container -->
 		<div class="relative min-h-0 w-full flex-1">
 			<Map />
 		</div>
 
 		<!-- Bottom Navigation Log Panel -->
-		<div class="h-64 shrink-0 overflow-y-auto">
+		<div class="h-44 shrink-0 overflow-y-auto sm:h-48 lg:h-64">
 			<NavLogTable />
 		</div>
 	</main>

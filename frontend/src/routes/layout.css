@@ -27,6 +27,17 @@ body {
 		Arial,
 		sans-serif;
 	overflow-x: hidden;
+	min-height: 100dvh;
+	overscroll-behavior: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+	box-sizing: border-box;
+	padding-top: env(safe-area-inset-top);
+	padding-right: env(safe-area-inset-right);
+	padding-bottom: env(safe-area-inset-bottom);
+	padding-left: env(safe-area-inset-left);
 }
 
 /* Custom Cockpit Scrollbar */
@@ -63,6 +74,28 @@ body {
 .leaflet-bar a:hover {
 	background-color: #334155 !important;
 	color: #38bdf8 !important;
+}
+
+/* iPad and other coarse-pointer devices need controls that can be hit reliably. */
+@media (pointer: coarse) {
+	button,
+	input,
+	select,
+	textarea,
+	[role='button'] {
+		min-height: 44px;
+	}
+
+	.leaflet-control-zoom a {
+		width: 44px !important;
+		height: 44px !important;
+		font-size: 22px !important;
+		line-height: 44px !important;
+	}
+
+	.leaflet-marker-icon {
+		touch-action: none;
+	}
 }
 
 .leaflet-popup-content-wrapper,
