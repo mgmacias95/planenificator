@@ -22,22 +22,29 @@
 	const tabs: TabType[] = ['route', 'charts', 'saved'];
 	let activeTab = $state<TabType>('route');
 	let plannerWidth = $state(400);
-	let plannerHeight = $state(470);
+	let plannerHeight = $state(420);
 	let isWideLayout = $state(false);
 	let resizeMedia: MediaQueryList | null = null;
 
 	onMount(() => {
 		resizeMedia = window.matchMedia('(min-width: 1024px)');
-		const updateLayout = () => (isWideLayout = resizeMedia?.matches ?? false);
-		updateLayout();
-		resizeMedia.addEventListener('change', updateLayout);
-
 		const storedWidth = Number(localStorage.getItem('planenificator:planner-width'));
 		const storedHeight = Number(localStorage.getItem('planenificator:planner-height'));
 		if (Number.isFinite(storedWidth) && storedWidth >= 320) plannerWidth = storedWidth;
 		if (Number.isFinite(storedHeight) && storedHeight >= 260) plannerHeight = storedHeight;
+		const updateLayout = () => {
+			isWideLayout = resizeMedia?.matches ?? false;
+			if (isWideLayout) plannerWidth = clampPlannerSize(plannerWidth, true);
+			else plannerHeight = clampPlannerSize(plannerHeight, false);
+		};
+		updateLayout();
+		resizeMedia.addEventListener('change', updateLayout);
+		window.addEventListener('resize', updateLayout);
 
-		return () => resizeMedia?.removeEventListener('change', updateLayout);
+		return () => {
+			resizeMedia?.removeEventListener('change', updateLayout);
+			window.removeEventListener('resize', updateLayout);
+		};
 	});
 
 	function handleTabKey(event: KeyboardEvent) {
@@ -58,7 +65,7 @@
 	function clampPlannerSize(value: number, wide: boolean) {
 		return wide
 			? Math.min(Math.max(value, 320), Math.min(560, window.innerWidth * 0.55))
-			: Math.min(Math.max(value, 260), window.innerHeight * 0.7);
+			: Math.min(Math.max(value, 260), Math.min(560, window.innerHeight * 0.55));
 	}
 
 	function savePlannerSize() {
@@ -175,7 +182,7 @@
 						</div>
 					</div>
 					<p class="flex min-w-0 items-center gap-1.5 text-[11px] text-slate-400">
-						<span class="truncate">{m.app_subtitle()}</span>
+						<span class="truncate">{m.app_subtitle_short()}</span>
 						<span aria-hidden="true">·</span>
 						<span
 							class:text-emerald-300={pyodideService.status.state === 'ready'}
@@ -386,10 +393,10 @@
 		position: absolute;
 		z-index: 1200;
 		right: 0;
-		bottom: -12px;
+		bottom: -22px;
 		left: 0;
 		display: flex;
-		height: 24px;
+		height: 44px;
 		align-items: center;
 		justify-content: center;
 		cursor: row-resize;
@@ -422,10 +429,10 @@
 
 		.planner-resize-handle {
 			top: 0;
-			right: -12px;
+			right: -22px;
 			bottom: 0;
 			left: auto;
-			width: 24px;
+			width: 44px;
 			height: auto;
 			cursor: col-resize;
 		}

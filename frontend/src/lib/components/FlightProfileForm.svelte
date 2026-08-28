@@ -182,17 +182,17 @@
 			</div>
 
 			<!-- Compact Profile Summary Badges -->
-			<div class="mt-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-slate-400">
-				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
+			<div class="mt-2 grid grid-cols-4 gap-1 font-mono text-[10px] text-slate-400">
+				<span class="rounded-md border border-slate-800 bg-slate-900 px-1 py-1 text-center">
 					TAS: <strong class="text-cyan-300">{flightPlanStore.profile.cruiseTas} kt</strong>
 				</span>
-				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
+				<span class="rounded-md border border-slate-800 bg-slate-900 px-1 py-1 text-center">
 					Climb: <strong class="text-cyan-300">{flightPlanStore.profile.climbRateFpm} fpm</strong>
 				</span>
-				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
+				<span class="rounded-md border border-slate-800 bg-slate-900 px-1 py-1 text-center">
 					Vy: <strong class="text-cyan-300">{flightPlanStore.profile.climbVy} kt</strong>
 				</span>
-				<span class="rounded-xs border border-slate-800 bg-slate-900 px-1.5 py-0.5">
+				<span class="rounded-md border border-slate-800 bg-slate-900 px-1 py-1 text-center">
 					Desc: <strong class="text-cyan-300">{flightPlanStore.profile.descentRateFpm} fpm</strong>
 				</span>
 			</div>

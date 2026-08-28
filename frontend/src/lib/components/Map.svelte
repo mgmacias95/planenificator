@@ -15,6 +15,7 @@
 	import L from 'leaflet';
 
 	let mapContainer: HTMLDivElement;
+	let weatherTrigger: HTMLButtonElement;
 	let map: L.Map | null = null;
 	let resizeObserver: ResizeObserver | null = null;
 	let waypointMarkers = new Map<string, L.Marker>();
@@ -34,6 +35,7 @@
 	let weatherLoading = $state(false);
 	let weatherError = $state(false);
 	let weatherPlaying = $state(false);
+	let radarTilesLoading = $state(false);
 	let weatherOpacity = $state(58);
 	let radarTimeline = $state<RadarTimeline | null>(null);
 	let radarFrames = $state<RadarFrame[]>([]);
@@ -119,9 +121,13 @@
 			mapContainer?.focus();
 		}
 		if (event.key === 'Escape' && weatherPanelOpen) {
-			weatherPanelOpen = false;
-			mapContainer?.focus();
+			closeWeatherPanel();
 		}
+	}
+
+	function closeWeatherPanel() {
+		weatherPanelOpen = false;
+		requestAnimationFrame(() => weatherTrigger?.focus());
 	}
 
 	function formatRadarTime(timestamp: number) {
@@ -134,7 +140,15 @@
 	}
 
 	function formatRadarDateTimeInput(timestamp: number) {
-		return new Date(timestamp * 1000).toISOString().slice(0, 16);
+		return new Intl.DateTimeFormat(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: 'UTC',
+			timeZoneName: 'short'
+		}).format(new Date(timestamp * 1000));
 	}
 
 	function stopRadarAnimation() {
@@ -149,11 +163,13 @@
 		if (!map || !weatherEnabled || !radarTimeline || !selectedRadarFrame) return;
 		const url = radarTileUrl(radarTimeline, selectedRadarFrame);
 		if (radarLayer) {
+			radarTilesLoading = true;
 			radarLayer.setUrl(url, false);
 			radarLayer.setOpacity(weatherOpacity / 100);
 			return;
 		}
 
+		radarTilesLoading = true;
 		radarLayer = L.tileLayer(url, {
 			attribution:
 				'<a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">Weather data by RainViewer</a>',
@@ -167,12 +183,16 @@
 			keepBuffer: 0,
 			updateWhenIdle: true,
 			updateWhenZooming: false
-		}).addTo(map);
+		});
+		radarLayer.on('loading', () => (radarTilesLoading = true));
+		radarLayer.on('load', () => (radarTilesLoading = false));
+		radarLayer.addTo(map);
 	}
 
 	function removeRadarLayer() {
 		if (map && radarLayer) map.removeLayer(radarLayer);
 		radarLayer = null;
+		radarTilesLoading = false;
 	}
 
 	async function loadRadar(forceRefresh = false) {
@@ -237,32 +257,25 @@
 		selectRadarFrame(radarFrames.length - 1);
 	}
 
-	function selectRadarDateTime(value: string) {
-		const targetTime = Date.parse(`${value}:00Z`) / 1000;
-		if (!Number.isFinite(targetTime) || radarFrames.length === 0) return;
-		let closestIndex = 0;
-		let closestDifference = Math.abs(radarFrames[0].time - targetTime);
-		for (let index = 1; index < radarFrames.length; index += 1) {
-			const difference = Math.abs(radarFrames[index].time - targetTime);
-			if (difference < closestDifference) {
-				closestIndex = index;
-				closestDifference = difference;
-			}
-		}
-		selectRadarFrame(closestIndex);
-	}
-
 	function toggleRadarAnimation() {
 		if (weatherPlaying) {
 			stopRadarAnimation();
 			return;
 		}
 		if (radarFrames.length < 2) return;
+		if (radarFrameIndex >= radarFrames.length - 1) {
+			radarFrameIndex = 0;
+			updateRadarLayer();
+		}
 		weatherPlaying = true;
 		radarAnimationTimer = setInterval(() => {
-			radarFrameIndex = (radarFrameIndex + 1) % radarFrames.length;
+			if (radarFrameIndex >= radarFrames.length - 1) {
+				stopRadarAnimation();
+				return;
+			}
+			radarFrameIndex += 1;
 			updateRadarLayer();
-		}, 1300);
+		}, 1500);
 	}
 
 	function updateRadarOpacity(value: number) {
@@ -593,6 +606,7 @@
 
 <div
 	class={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-800 shadow-lg ${isAddMode ? 'ring-2 ring-cyan-400/70' : ''}`}
+	style="container-type:size"
 >
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (Leaflet turns this container into an interactive map.) -->
 	<div
@@ -607,15 +621,16 @@
 
 	<!-- Map Toolbar Overlay -->
 	<div
-		class="pointer-events-none absolute top-3 right-3 bottom-3 z-1000 flex min-h-0 flex-col items-end gap-2 sm:flex-row sm:items-start"
+		class="map-weather-controls pointer-events-none absolute top-3 right-3 bottom-3 z-1000 flex min-h-0 flex-col items-end gap-2 sm:flex-row sm:items-start"
 	>
 		<div
-			class="pointer-events-auto flex flex-col gap-1.5 rounded-xl border border-slate-700/80 bg-slate-900/92 p-1.5 text-xs shadow-lg backdrop-blur-xs sm:order-2"
+			class="map-toolbar pointer-events-auto flex flex-col gap-1.5 rounded-xl border border-slate-700/80 bg-slate-900/92 p-1.5 text-xs shadow-lg backdrop-blur-xs sm:order-2"
 		>
 			<button
 				type="button"
 				onclick={() => (isAddMode = !isAddMode)}
 				aria-pressed={isAddMode}
+				aria-label={m.map_add_waypoint()}
 				class="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors"
 				class:border-cyan-400={isAddMode}
 				class:bg-cyan-500={isAddMode}
@@ -626,13 +641,16 @@
 				title={m.map_add_waypoint_help()}
 			>
 				<Icon name="plus" class="h-4 w-4" />
-				<span>{m.map_add_waypoint()}</span>
+				<span class="map-toolbar-label">{m.map_add_waypoint()}</span>
 			</button>
 
 			<button
+				bind:this={weatherTrigger}
 				type="button"
 				onclick={openWeatherPanel}
 				aria-expanded={weatherPanelOpen}
+				aria-pressed={weatherEnabled}
+				aria-label={m.map_weather()}
 				aria-controls="weather-overlay-panel"
 				class={`relative flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
 					weatherEnabled
@@ -642,7 +660,7 @@
 				title={m.map_weather_help()}
 			>
 				<Icon name="cloud" class="h-4 w-4 text-cyan-400" />
-				<span>{m.map_weather()}</span>
+				<span class="map-toolbar-label">{m.map_weather()}</span>
 				{#if weatherEnabled}
 					<span class="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-cyan-300"></span>
 				{/if}
@@ -652,11 +670,12 @@
 				<button
 					type="button"
 					onclick={fitRoute}
+					aria-label={m.map_fit_route()}
 					class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
 					title={m.map_fit_route_help()}
 				>
 					<Icon name="scan" class="h-4 w-4 text-cyan-400" />
-					<span>{m.map_fit_route()}</span>
+					<span class="map-toolbar-label">{m.map_fit_route()}</span>
 				</button>
 			{/if}
 
@@ -667,21 +686,24 @@
 						map.setView([40.4167, -3.7037], 6);
 					}
 				}}
+				aria-label={m.map_center()}
 				class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
 				title="Reset map view to Spain VFR region"
 			>
 				<Icon name="map-pin" class="h-4 w-4 text-cyan-400" />
-				<span>{m.map_center()}</span>
+				<span class="map-toolbar-label">{m.map_center()}</span>
 			</button>
 		</div>
 
 		{#if weatherPanelOpen}
 			<section
 				id="weather-overlay-panel"
-				class="pointer-events-auto min-h-0 w-[min(19.5rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl border border-slate-700/80 bg-slate-950/94 p-4 text-slate-100 shadow-2xl backdrop-blur-xl sm:order-1"
+				class="weather-panel pointer-events-auto max-h-full min-h-0 w-[min(19.5rem,calc(100vw-1.5rem))] shrink-0 overflow-y-auto overscroll-contain rounded-2xl border border-slate-700/80 bg-slate-950/94 p-4 text-slate-100 shadow-2xl backdrop-blur-xl sm:order-1"
 				aria-label={m.map_weather_title()}
 			>
-				<div class="flex items-start justify-between gap-3">
+				<div
+					class="weather-panel-header sticky -top-4 z-10 -mx-4 -mt-4 flex items-start justify-between gap-3 border-b border-transparent bg-slate-950/94 px-4 pt-4 pb-2 backdrop-blur-xl"
+				>
 					<div class="min-w-0">
 						<div class="flex flex-wrap items-center gap-2">
 							<h2 class="text-sm font-bold">{m.map_weather_title()}</h2>
@@ -729,7 +751,7 @@
 						</button>
 						<button
 							type="button"
-							onclick={() => (weatherPanelOpen = false)}
+							onclick={closeWeatherPanel}
 							aria-label={m.map_weather_close()}
 							class="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
 						>
@@ -765,38 +787,60 @@
 						>
 							{m.map_weather_datetime()}
 						</label>
-						<input
+						<select
 							id="weather-datetime"
-							type="datetime-local"
-							min={formatRadarDateTimeInput(radarFrames[0].time)}
-							max={formatRadarDateTimeInput(radarFrames[radarFrames.length - 1].time)}
-							step="600"
-							value={formatRadarDateTimeInput(selectedRadarFrame.time)}
+							value={radarFrameIndex}
 							disabled={!weatherEnabled}
-							onchange={(event) => selectRadarDateTime(event.currentTarget.value)}
+							onchange={(event) => selectRadarFrame(Number(event.currentTarget.value))}
 							class="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm font-semibold text-white scheme-dark focus:border-cyan-400 focus:ring-cyan-400 disabled:opacity-40"
-						/>
+						>
+							{#each radarFrames as frame, index (frame.time)}
+								<option value={index}>{formatRadarDateTimeInput(frame.time)}</option>
+							{/each}
+						</select>
 					</div>
 
 					<div class="mt-3 flex items-center gap-3">
-						<button
-							type="button"
-							onclick={toggleRadarAnimation}
-							disabled={!weatherEnabled || radarFrames.length < 2}
-							aria-label={weatherPlaying ? m.map_weather_pause() : m.map_weather_play()}
-							class="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/40 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-						>
-							<Icon name={weatherPlaying ? 'pause' : 'play'} class="h-4 w-4" />
-						</button>
+						<div class="flex w-12 shrink-0 flex-col items-center gap-1">
+							<button
+								type="button"
+								onclick={toggleRadarAnimation}
+								disabled={!weatherEnabled || radarFrames.length < 2}
+								aria-label={weatherPlaying
+									? m.map_weather_pause()
+									: radarFrameIndex === radarFrames.length - 1
+										? m.map_weather_replay()
+										: m.map_weather_play()}
+								class="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/40 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+							>
+								<Icon name={weatherPlaying ? 'pause' : 'play'} class="h-4 w-4" />
+							</button>
+							<span class="text-[9px] font-semibold text-slate-400">
+								{weatherPlaying
+									? m.map_weather_pause_short()
+									: radarFrameIndex === radarFrames.length - 1
+										? m.map_weather_replay_short()
+										: m.map_weather_play_short()}
+							</span>
+						</div>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-baseline justify-between gap-2">
-								<p
-									class="font-mono text-base font-bold text-white"
-									role="status"
-									aria-live="polite"
-								>
-									{formatRadarTime(selectedRadarFrame.time)}
-								</p>
+								<div role="status" aria-live="polite">
+									<p class="font-mono text-base font-bold text-white">
+										{formatRadarTime(selectedRadarFrame.time)}
+									</p>
+									<p class="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-500">
+										<span
+											>{m.map_weather_frame({
+												current: String(radarFrameIndex + 1),
+												total: String(radarFrames.length)
+											})}</span
+										>
+										{#if radarTilesLoading}
+											<span class="text-cyan-300">· {m.map_weather_updating()}</span>
+										{/if}
+									</p>
+								</div>
 								<button
 									type="button"
 									onclick={jumpToLatestRadar}
@@ -822,33 +866,48 @@
 								aria-valuetext={formatRadarTime(selectedRadarFrame.time)}
 								class="mt-2 h-7 w-full cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
 							/>
+							<div
+								class="flex justify-between font-mono text-[9px] text-slate-500"
+								aria-hidden="true"
+							>
+								<span>{formatRadarTime(radarFrames[0].time)}</span>
+								<span
+									>{formatRadarTime(radarFrames[radarFrames.length - 1].time)} · {m.map_weather_latest()}</span
+								>
+							</div>
 						</div>
 					</div>
 
-					<div class="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-						<div
-							class="flex items-center justify-between gap-3 text-[11px] font-semibold text-slate-300"
+					<details class="mt-3 rounded-xl border border-slate-800 bg-slate-900/70">
+						<summary
+							class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-[11px] font-semibold text-slate-300"
 						>
-							<label for="weather-opacity">{m.map_weather_opacity()}</label>
-							<span class="font-mono text-slate-400">{weatherOpacity}%</span>
+							<span>{m.map_weather_display()}</span>
+							<span class="flex items-center gap-1.5 font-mono text-slate-400">
+								{weatherOpacity}%
+								<Icon name="chevron-down" class="weather-display-chevron h-3.5 w-3.5" />
+							</span>
+						</summary>
+						<div class="border-t border-slate-800 px-3 pt-2 pb-3">
+							<label for="weather-opacity" class="sr-only">{m.map_weather_opacity()}</label>
+							<input
+								id="weather-opacity"
+								type="range"
+								min="30"
+								max="85"
+								step="5"
+								value={weatherOpacity}
+								disabled={!weatherEnabled}
+								oninput={(event) => updateRadarOpacity(Number(event.currentTarget.value))}
+								class="h-7 w-full cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+							/>
+							<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+								<span>{m.map_weather_light()}</span>
+								<span class="weather-legend h-1.5 flex-1 rounded-full"></span>
+								<span>{m.map_weather_heavy()}</span>
+							</div>
 						</div>
-						<input
-							id="weather-opacity"
-							type="range"
-							min="30"
-							max="85"
-							step="5"
-							value={weatherOpacity}
-							disabled={!weatherEnabled}
-							oninput={(event) => updateRadarOpacity(Number(event.currentTarget.value))}
-							class="mt-1 h-7 w-full cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
-						/>
-						<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
-							<span>{m.map_weather_light()}</span>
-							<span class="weather-legend h-1.5 flex-1 rounded-full"></span>
-							<span>{m.map_weather_heavy()}</span>
-						</div>
-					</div>
+					</details>
 				{/if}
 
 				<a
@@ -880,7 +939,7 @@
 				</button>
 			{/if}
 		</div>
-	{:else if flightPlanStore.waypoints.length === 0}
+	{:else if flightPlanStore.waypoints.length === 0 && !weatherPanelOpen}
 		<div
 			class={`pointer-events-none absolute bottom-8 left-1/2 z-1000 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full border px-4 py-2 text-center text-xs font-semibold shadow-lg backdrop-blur-md ${
 				isAddMode
@@ -906,7 +965,7 @@
 	}
 
 	:global(.base-map-tiles) {
-		filter: invert(1) hue-rotate(180deg) brightness(0.68) contrast(1.15) saturate(0.75);
+		filter: invert(1) hue-rotate(180deg) brightness(0.78) contrast(1.08) saturate(0.82);
 	}
 
 	:global(.waypoint-name-label) {
@@ -956,6 +1015,60 @@
 			#e11d48 78%,
 			#facc15 100%
 		);
+	}
+
+	:global(details[open] .weather-display-chevron) {
+		transform: rotate(180deg);
+	}
+
+	@container (max-height: 520px) {
+		.map-weather-controls {
+			inset: 0.75rem;
+			display: block;
+		}
+
+		.map-toolbar {
+			position: absolute;
+			top: 0;
+			right: 0;
+		}
+
+		.weather-panel {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			left: auto;
+			width: min(32rem, 100%);
+			max-height: 70cqh;
+		}
+	}
+
+	@container (max-width: 560px) {
+		.map-weather-controls {
+			inset: 0.75rem;
+			display: block;
+		}
+
+		.map-toolbar {
+			position: absolute;
+			top: 0;
+			right: 0;
+		}
+
+		.weather-panel {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			width: auto;
+			max-height: 70cqh;
+		}
+	}
+
+	@container (max-width: 520px) {
+		.map-toolbar-label {
+			display: none;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
