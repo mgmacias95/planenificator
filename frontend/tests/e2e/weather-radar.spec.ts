@@ -39,6 +39,10 @@ function forecastFixture(requestUrl: string) {
 			precipitation: times.map((_, frameIndex) => frameIndex + pointIndex / 100),
 			precipitation_probability: times.map((_, frameIndex) =>
 				Math.min(100, 20 + frameIndex * 5 + pointIndex)
+			),
+			wind_speed_10m: times.map((_, frameIndex) => 8 + frameIndex + pointIndex / 5),
+			wind_direction_10m: times.map(
+				(_, frameIndex) => (210 + pointIndex * 4 + frameIndex * 3) % 360
 			)
 		}
 	}));
@@ -74,6 +78,21 @@ test.describe('weather radar overlay', () => {
 		await datePicker.press('Tab');
 		await expect(panel.getByText(/Peak 4\.2 mm\/h/)).toBeVisible();
 
+		await panel.getByRole('button', { name: 'Wind flow', exact: true }).click();
+		await expect(panel.getByText('Animated surface wind · hourly · next 8 days')).toBeVisible();
+		await expect(panel.getByText(/Mean 14 kt · peak 16 kt/)).toBeVisible();
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(0);
+		const windCanvas = page.locator('[data-weather-layer="wind-flow"]');
+		await expect(windCanvas).toBeVisible();
+		const firstWindFrame = await windCanvas.evaluate((canvas: HTMLCanvasElement) =>
+			canvas.toDataURL()
+		);
+		await page.waitForTimeout(250);
+		const secondWindFrame = await windCanvas.evaluate((canvas: HTMLCanvasElement) =>
+			canvas.toDataURL()
+		);
+		expect(secondWindFrame).not.toBe(firstWindFrame);
+
 		const timeSlider = panel.getByRole('slider', { name: 'Forecast time' });
 		const frameBeforePlay = Number(await timeSlider.inputValue());
 		await panel.getByRole('button', { name: 'Play future forecast', exact: true }).click();
@@ -82,6 +101,9 @@ test.describe('weather radar overlay', () => {
 			.poll(async () => Number(await timeSlider.inputValue()), { timeout: 2500 })
 			.toBeGreaterThan(frameBeforePlay);
 		await panel.getByRole('button', { name: 'Pause future forecast' }).click();
+		await panel.getByRole('button', { name: 'Precipitation', exact: true }).click();
+		await expect(windCanvas).toBeHidden();
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
 		expect(pageErrors).toEqual([]);
 	});
 
