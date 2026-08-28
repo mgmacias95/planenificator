@@ -63,6 +63,8 @@ test.describe('iPad route planning', () => {
 
 		await page.touchscreen.tap(mapBox!.x + mapBox!.width * 0.5, mapBox!.y + mapBox!.height * 0.5);
 		await expect(page.locator('.custom-wp-marker')).toHaveCount(1);
-		await expect(page.locator('input[title="Click to rename waypoint"]')).toHaveValue('Madrid');
+		await expect(page.locator('input[title="Click to rename waypoint"]')).toHaveValue(
+			'ES-0003 - Banco de España Helipad'
+		);
 	});
 });
