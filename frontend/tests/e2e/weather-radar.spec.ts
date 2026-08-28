@@ -92,10 +92,18 @@ test.describe('weather radar overlay', () => {
 		await datePicker.press('Tab');
 		await expect(panel.getByText(/Peak 4\.2 mm\/h/)).toBeVisible();
 
+		const rainToggle = panel.getByRole('button', { name: 'Precipitation', exact: true });
+		const windToggle = panel.getByRole('button', { name: 'Wind flow', exact: true });
+		await expect(rainToggle).toHaveAttribute('aria-pressed', 'true');
+		await expect(windToggle).toHaveAttribute('aria-pressed', 'false');
 		await panel.getByRole('button', { name: 'Wind flow', exact: true }).click();
-		await expect(panel.getByText('Animated wind field · hourly · next 8 days')).toBeVisible();
+		await expect(rainToggle).toHaveAttribute('aria-pressed', 'true');
+		await expect(windToggle).toHaveAttribute('aria-pressed', 'true');
+		await expect(
+			panel.getByText('Precipitation + animated wind · hourly · next 8 days')
+		).toBeVisible();
 		await expect(panel.getByText(/Mean 14 kt · peak 16 kt/)).toBeVisible();
-		await expect(page.locator('.weather-forecast-field')).toHaveCount(0);
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
 		const windCanvas = page.locator('[data-weather-layer="wind-flow"]');
 		await expect(windCanvas).toBeVisible();
 		const firstWindFrame = await windCanvas.evaluate((canvas: HTMLCanvasElement) =>
@@ -113,12 +121,14 @@ test.describe('weather radar overlay', () => {
 		).toBeVisible();
 		await expect(panel.getByText('Pressure-level altitude is approximate')).toBeVisible();
 
-		await panel.getByRole('button', { name: 'Both', exact: true }).click();
-		await expect(
-			panel.getByText('Precipitation + animated wind · hourly · next 8 days')
-		).toBeVisible();
-		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
+		await rainToggle.click();
+		await expect(rainToggle).toHaveAttribute('aria-pressed', 'false');
+		await expect(windToggle).toHaveAttribute('aria-pressed', 'true');
+		await expect(panel.getByText('Animated wind field · hourly · next 8 days')).toBeVisible();
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(0);
 		await expect(windCanvas).toBeVisible();
+		await rainToggle.click();
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
 
 		const timeSlider = panel.getByRole('slider', { name: 'Forecast time' });
 		const frameBeforePlay = Number(await timeSlider.inputValue());
@@ -128,7 +138,7 @@ test.describe('weather radar overlay', () => {
 			.poll(async () => Number(await timeSlider.inputValue()), { timeout: 2500 })
 			.toBeGreaterThan(frameBeforePlay);
 		await panel.getByRole('button', { name: 'Pause future forecast' }).click();
-		await panel.getByRole('button', { name: 'Precipitation', exact: true }).click();
+		await windToggle.click();
 		await expect(windCanvas).toBeHidden();
 		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
 		expect(pageErrors).toEqual([]);

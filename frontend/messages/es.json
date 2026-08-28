@@ -137,7 +137,7 @@
 	"map_weather_wind": "Flujo del viento",
 	"map_weather_rain_short": "Lluvia",
 	"map_weather_wind_short": "Viento",
-	"map_weather_both": "Ambos",
+	"map_weather_no_layers": "Elige lluvia o viento",
 	"map_weather_wind_summary": "Campo de viento animado · cada hora · próximos 8 días",
 	"map_weather_combined_summary": "Precipitación + viento animado · cada hora · próximos 8 días",
 	"map_weather_wind_speed": "Media {average} kt · máximo {peak} kt",

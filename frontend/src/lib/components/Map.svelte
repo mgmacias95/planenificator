@@ -45,7 +45,8 @@
 	let forecastAttributionVisible = false;
 	let lastAutoFitRouteKey = '';
 	let weatherMode = $state<'forecast' | 'radar'>('forecast');
-	let forecastLayerMode = $state<'precipitation' | 'wind' | 'combined'>('precipitation');
+	let precipitationLayerEnabled = $state(true);
+	let windLayerEnabled = $state(false);
 	let windLevel = $state<WindLevel>('surface');
 	let weatherPanelOpen = $state(false);
 	let weatherEnabled = $state(false);
@@ -236,11 +237,11 @@
 	}
 
 	function showsWindLayer() {
-		return forecastLayerMode === 'wind' || forecastLayerMode === 'combined';
+		return windLayerEnabled;
 	}
 
 	function showsPrecipitationLayer() {
-		return forecastLayerMode === 'precipitation' || forecastLayerMode === 'combined';
+		return precipitationLayerEnabled;
 	}
 
 	function windLevelLabel(level: WindLevel) {
@@ -313,9 +314,9 @@
 		forecastAttributionVisible = false;
 	}
 
-	function selectForecastLayer(mode: 'precipitation' | 'wind' | 'combined') {
-		if (forecastLayerMode === mode) return;
-		forecastLayerMode = mode;
+	function toggleForecastLayer(layer: 'precipitation' | 'wind') {
+		if (layer === 'precipitation') precipitationLayerEnabled = !precipitationLayerEnabled;
+		else windLayerEnabled = !windLayerEnabled;
 		updateForecastLayer();
 	}
 
@@ -1021,11 +1022,13 @@
 						</div>
 						<p class="mt-1 text-[11px] text-slate-400">
 							{weatherMode === 'forecast'
-								? forecastLayerMode === 'combined'
+								? precipitationLayerEnabled && windLayerEnabled
 									? m.map_weather_combined_summary()
-									: forecastLayerMode === 'wind'
+									: windLayerEnabled
 										? m.map_weather_wind_summary()
-										: m.map_weather_forecast_summary()
+										: precipitationLayerEnabled
+											? m.map_weather_forecast_summary()
+											: m.map_weather_no_layers()
 								: m.map_weather_history()}
 						</p>
 					</div>
@@ -1128,17 +1131,17 @@
 							{m.map_weather_forecast_layer()}
 						</p>
 						<div
-							class="grid grid-cols-3 gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1"
+							class="grid grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1"
 							role="group"
 							aria-label={m.map_weather_forecast_layer()}
 						>
 							<button
 								type="button"
 								aria-label={m.map_weather_precipitation()}
-								aria-pressed={forecastLayerMode === 'precipitation'}
-								onclick={() => selectForecastLayer('precipitation')}
+								aria-pressed={precipitationLayerEnabled}
+								onclick={() => toggleForecastLayer('precipitation')}
 								class={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold transition-colors ${
-									forecastLayerMode === 'precipitation'
+									precipitationLayerEnabled
 										? 'bg-blue-500 text-white shadow-sm'
 										: 'text-slate-400 hover:bg-slate-800 hover:text-white'
 								}`}
@@ -1148,27 +1151,15 @@
 							<button
 								type="button"
 								aria-label={m.map_weather_wind()}
-								aria-pressed={forecastLayerMode === 'wind'}
-								onclick={() => selectForecastLayer('wind')}
+								aria-pressed={windLayerEnabled}
+								onclick={() => toggleForecastLayer('wind')}
 								class={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold transition-colors ${
-									forecastLayerMode === 'wind'
+									windLayerEnabled
 										? 'bg-cyan-400 text-slate-950 shadow-sm'
 										: 'text-slate-400 hover:bg-slate-800 hover:text-white'
 								}`}
 							>
 								{m.map_weather_wind_short()}
-							</button>
-							<button
-								type="button"
-								aria-pressed={forecastLayerMode === 'combined'}
-								onclick={() => selectForecastLayer('combined')}
-								class={`min-h-11 rounded-lg px-2 text-xs font-bold transition-colors ${
-									forecastLayerMode === 'combined'
-										? 'bg-violet-400 text-slate-950 shadow-sm'
-										: 'text-slate-400 hover:bg-slate-800 hover:text-white'
-								}`}
-							>
-								{m.map_weather_both()}
 							</button>
 						</div>
 					</div>
@@ -1320,7 +1311,7 @@
 						</summary>
 						<div class="border-t border-slate-800 px-3 pt-2 pb-3">
 							<label for="forecast-opacity" class="sr-only"
-								>{forecastLayerMode === 'wind'
+								>{windLayerEnabled && !precipitationLayerEnabled
 									? m.map_weather_wind_opacity()
 									: m.map_weather_forecast_opacity()}</label
 							>
