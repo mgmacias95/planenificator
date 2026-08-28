@@ -16,10 +16,7 @@
 		Printer,
 		Clipboard,
 		ChevronDown,
-<<<<<<< HEAD
 		ChevronUp,
-=======
->>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 		ChevronRight,
 		Plus,
 		X,
@@ -27,7 +24,6 @@
 		Loader2,
 		Globe,
 		Cloud,
-<<<<<<< HEAD
 		Compass,
 		Route,
 		Layers3,
@@ -39,9 +35,6 @@
 		Play,
 		Pause,
 		Wind
-=======
-		Compass
->>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 	} from '@lucide/svelte';
 
 	interface Props {
@@ -61,10 +54,7 @@
 			| 'printer'
 			| 'clipboard'
 			| 'chevron-down'
-<<<<<<< HEAD
 			| 'chevron-up'
-=======
->>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 			| 'chevron-right'
 			| 'plus'
 			| 'x'
@@ -73,7 +63,6 @@
 			| 'check'
 			| 'globe'
 			| 'cloud'
-<<<<<<< HEAD
 			| 'compass'
 			| 'route'
 			| 'layers'
@@ -85,9 +74,6 @@
 			| 'play'
 			| 'pause'
 			| 'wind';
-=======
-			| 'compass';
->>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 		class?: string;
 		size?: number;
 	}
@@ -127,11 +113,8 @@
 	<Clipboard class={className} {size} />
 {:else if name === 'chevron-down'}
 	<ChevronDown class={className} {size} />
-<<<<<<< HEAD
 {:else if name === 'chevron-up'}
 	<ChevronUp class={className} {size} />
-=======
->>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 {:else if name === 'chevron-right'}
 	<ChevronRight class={className} {size} />
 {:else if name === 'plus'}
@@ -148,7 +131,6 @@
 	<Cloud class={className} {size} />
 {:else if name === 'compass'}
 	<Compass class={className} {size} />
-<<<<<<< HEAD
 {:else if name === 'route'}
 	<Route class={className} {size} />
 {:else if name === 'layers'}
@@ -169,6 +151,4 @@
 	<Pause class={className} {size} />
 {:else if name === 'wind'}
 	<Wind class={className} {size} />
-=======
->>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 {/if}
