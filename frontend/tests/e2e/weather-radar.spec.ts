@@ -24,8 +24,66 @@ function radarFixture() {
 	};
 }
 
+function forecastFixture(requestUrl: string) {
+	const url = new URL(requestUrl);
+	const latitudes = url.searchParams.get('latitude')?.split(',').map(Number) ?? [];
+	const longitudes = url.searchParams.get('longitude')?.split(',').map(Number) ?? [];
+	const firstHour = Math.floor(Date.now() / 3_600_000) * 3600;
+	const times = Array.from({ length: 16 }, (_, index) => firstHour + index * 3600);
+
+	return latitudes.map((latitude, pointIndex) => ({
+		latitude,
+		longitude: longitudes[pointIndex],
+		hourly: {
+			time: times,
+			precipitation: times.map((_, frameIndex) => frameIndex + pointIndex / 100),
+			precipitation_probability: times.map((_, frameIndex) =>
+				Math.min(100, 20 + frameIndex * 5 + pointIndex)
+			)
+		}
+	}));
+}
+
 test.describe('weather radar overlay', () => {
 	test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true, timezoneId: 'UTC' });
+
+	test('shows a future forecast, updates the chosen hour, and plays forward', async ({ page }) => {
+		const pageErrors: Error[] = [];
+		page.on('pageerror', (error) => pageErrors.push(error));
+		await page.route('**/api.open-meteo.com/v1/forecast**', (route) =>
+			route.fulfill({ json: forecastFixture(route.request().url()) })
+		);
+
+		await page.goto('/');
+		await page.getByRole('button', { name: 'Weather', exact: true }).click();
+
+		const panel = page.locator('#weather-overlay-panel');
+		await expect(panel.getByRole('tab', { name: 'Forecast' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		await expect(panel.getByText('Model precipitation · hourly · next 8 days')).toBeVisible();
+		await expect(page.locator('.forecast-precipitation-cell')).not.toHaveCount(0);
+		await expect(panel.getByRole('link', { name: 'Forecast data by Open-Meteo' })).toBeVisible();
+
+		const datePicker = panel.getByLabel('Forecast date and time (UTC)');
+		const initialValue = await datePicker.inputValue();
+		const laterValue = new Date(`${initialValue}:00.000Z`);
+		laterValue.setUTCHours(laterValue.getUTCHours() + 3);
+		await datePicker.fill(laterValue.toISOString().slice(0, 16));
+		await datePicker.press('Tab');
+		await expect(panel.getByText(/Peak 4\.2 mm\/h/)).toBeVisible();
+
+		const timeSlider = panel.getByRole('slider', { name: 'Forecast time' });
+		const frameBeforePlay = Number(await timeSlider.inputValue());
+		await panel.getByRole('button', { name: 'Play future forecast', exact: true }).click();
+		await expect(panel.getByRole('button', { name: 'Pause future forecast' })).toBeVisible();
+		await expect
+			.poll(async () => Number(await timeSlider.inputValue()), { timeout: 2500 })
+			.toBeGreaterThan(frameBeforePlay);
+		await panel.getByRole('button', { name: 'Pause future forecast' }).click();
+		expect(pageErrors).toEqual([]);
+	});
 
 	test('shows observed radar with touch-friendly history and opacity controls', async ({
 		page
@@ -35,6 +93,9 @@ test.describe('weather radar overlay', () => {
 		page.on('pageerror', (error) => pageErrors.push(error));
 		await page.route('**/api.rainviewer.com/public/weather-maps.json', (route) =>
 			route.fulfill({ json: radarFixture() })
+		);
+		await page.route('**/api.open-meteo.com/v1/forecast**', (route) =>
+			route.fulfill({ json: forecastFixture(route.request().url()) })
 		);
 		await page.route('https://tiles.example.test/**', (route) => {
 			tileRequests.push(route.request().url());
@@ -46,7 +107,8 @@ test.describe('weather radar overlay', () => {
 
 		const panel = page.locator('#weather-overlay-panel');
 		await expect(panel).toBeVisible();
-		await expect(panel.getByRole('heading', { name: 'Precipitation radar' })).toBeVisible();
+		await panel.getByRole('tab', { name: 'Recent radar' }).click();
+		await expect(panel.getByRole('heading', { name: 'Observed precipitation' })).toBeVisible();
 		await expect(panel.locator('[role="status"]').filter({ hasText: /UTC/ })).toBeVisible();
 		await expect(page.locator('.weather-radar-tiles')).not.toHaveCount(0);
 		await expect(panel.getByRole('link', { name: 'Weather data by RainViewer' })).toBeVisible();
@@ -96,7 +158,7 @@ test.describe('weather radar overlay', () => {
 		await expect.poll(() => timeSlider.inputValue(), { timeout: 3000 }).toBe('1');
 		await panel.getByRole('button', { name: 'Pause radar history', exact: true }).click();
 
-		await panel.getByRole('button', { name: 'Radar on' }).click();
+		await panel.getByRole('button', { name: 'Weather layer on' }).click();
 		await expect(page.locator('.weather-radar-tiles')).toHaveCount(0);
 		expect(pageErrors).toEqual([]);
 	});
@@ -107,12 +169,16 @@ test.describe('weather radar overlay', () => {
 			if (shouldFail) return route.fulfill({ status: 503, body: 'unavailable' });
 			return route.fulfill({ json: radarFixture() });
 		});
+		await page.route('**/api.open-meteo.com/v1/forecast**', (route) =>
+			route.fulfill({ json: forecastFixture(route.request().url()) })
+		);
 		await page.route('https://tiles.example.test/**', (route) =>
 			route.fulfill({ status: 200, contentType: 'image/png', body: transparentPixel })
 		);
 
 		await page.goto('/');
 		await page.getByRole('button', { name: 'Weather', exact: true }).click();
+		await page.getByRole('tab', { name: 'Recent radar' }).click();
 		await expect(page.getByRole('alert')).toContainText('Radar is unavailable right now.');
 		await expect(page.locator('text=Traceback')).toHaveCount(0);
 

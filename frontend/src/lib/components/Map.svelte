@@ -9,6 +9,12 @@
 		type RadarFrame,
 		type RadarTimeline
 	} from '$lib/services/weather-radar';
+	import {
+		fetchPrecipitationForecast,
+		nearestForecastFrameIndex,
+		type ForecastBounds,
+		type PrecipitationForecast
+	} from '$lib/services/weather-forecast';
 	import type { Waypoint } from '$lib/types/flight';
 	import * as m from '$lib/paraglide/messages';
 	import Icon from './Icon.svelte';
@@ -28,8 +34,12 @@
 	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 	let radarAnimationTimer: ReturnType<typeof setInterval> | null = null;
 	let radarRefreshTimer: ReturnType<typeof setInterval> | null = null;
+	let forecastMoveTimer: ReturnType<typeof setTimeout> | null = null;
 	let radarLayer: L.TileLayer | null = null;
+	let forecastLayer: L.LayerGroup | null = null;
+	let forecastAttributionVisible = false;
 	let lastAutoFitRouteKey = '';
+	let weatherMode = $state<'forecast' | 'radar'>('forecast');
 	let weatherPanelOpen = $state(false);
 	let weatherEnabled = $state(false);
 	let weatherLoading = $state(false);
@@ -40,7 +50,24 @@
 	let radarTimeline = $state<RadarTimeline | null>(null);
 	let radarFrames = $state<RadarFrame[]>([]);
 	let radarFrameIndex = $state(0);
+	let forecast = $state<PrecipitationForecast | null>(null);
+	let forecastFrameIndex = $state(0);
 	let selectedRadarFrame = $derived(radarFrames[radarFrameIndex] ?? null);
+	let selectedForecastTime = $derived(forecast?.times[forecastFrameIndex] ?? null);
+	let forecastFrameStats = $derived(
+		forecast
+			? forecast.points.reduce(
+					(summary, point) => ({
+						peak: Math.max(summary.peak, point.precipitation[forecastFrameIndex] ?? 0),
+						probability: Math.max(
+							summary.probability,
+							point.precipitationProbability[forecastFrameIndex] ?? 0
+						)
+					}),
+					{ peak: 0, probability: 0 }
+				)
+			: { peak: 0, probability: 0 }
+	);
 	let radarShowingHistory = $derived(
 		radarFrames.length > 0 && radarFrameIndex < radarFrames.length - 1
 	);
@@ -151,7 +178,23 @@
 		}).format(new Date(timestamp * 1000));
 	}
 
-	function stopRadarAnimation() {
+	function formatForecastDateTime(timestamp: number) {
+		return new Intl.DateTimeFormat(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: 'UTC'
+		}).format(new Date(timestamp * 1000));
+	}
+
+	function formatDateTimeInput(timestamp: number) {
+		return new Date(timestamp * 1000).toISOString().slice(0, 16);
+	}
+
+	function stopWeatherAnimation() {
 		if (radarAnimationTimer) {
 			clearInterval(radarAnimationTimer);
 			radarAnimationTimer = null;
@@ -159,8 +202,140 @@
 		weatherPlaying = false;
 	}
 
+	function currentForecastBounds(): ForecastBounds | null {
+		if (!map) return null;
+		const bounds = map.getBounds();
+		return {
+			south: bounds.getSouth(),
+			west: bounds.getWest(),
+			north: bounds.getNorth(),
+			east: bounds.getEast()
+		};
+	}
+
+	function forecastColor(precipitation: number, probability: number) {
+		if (precipitation >= 7.5) return '#facc15';
+		if (precipitation >= 3) return '#f43f5e';
+		if (precipitation >= 1) return '#8b5cf6';
+		if (precipitation >= 0.2) return '#2563eb';
+		return probability >= 20 ? '#38bdf8' : '#60a5fa';
+	}
+
+	function updateForecastLayer() {
+		if (!map || !weatherEnabled || weatherMode !== 'forecast' || !forecast) return;
+		if (!forecastLayer) {
+			forecastLayer = L.layerGroup().addTo(map);
+			if (!forecastAttributionVisible) {
+				map.attributionControl.addAttribution(
+					'<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Forecast by Open-Meteo</a>'
+				);
+				forecastAttributionVisible = true;
+			}
+		}
+		forecastLayer.clearLayers();
+		const radius = Math.max(66, Math.min(132, mapContainer.clientWidth / 5.2));
+
+		for (const point of forecast.points) {
+			const precipitation = point.precipitation[forecastFrameIndex] ?? 0;
+			const probability = point.precipitationProbability[forecastFrameIndex] ?? 0;
+			if (precipitation < 0.01 && probability < 15) continue;
+			const strength = Math.min(1, Math.max(probability / 100, precipitation / 5));
+			L.circleMarker([point.latitude, point.longitude], {
+				pane: 'weatherPane',
+				className: 'forecast-precipitation-cell',
+				radius,
+				stroke: false,
+				fill: true,
+				fillColor: forecastColor(precipitation, probability),
+				fillOpacity: (weatherOpacity / 100) * (0.18 + strength * 0.55),
+				interactive: false
+			}).addTo(forecastLayer);
+		}
+	}
+
+	function removeForecastLayer() {
+		if (map && forecastLayer) map.removeLayer(forecastLayer);
+		if (map && forecastAttributionVisible) {
+			map.attributionControl.removeAttribution(
+				'<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Forecast by Open-Meteo</a>'
+			);
+		}
+		forecastLayer = null;
+		forecastAttributionVisible = false;
+	}
+
+	async function loadForecast(forceRefresh = false, targetTime?: number) {
+		const bounds = currentForecastBounds();
+		if (!bounds || weatherLoading) return;
+		const hadForecast = forecast !== null;
+		const requestedTime =
+			targetTime ?? selectedForecastTime ?? Math.ceil(Date.now() / 3_600_000) * 3_600;
+		weatherLoading = true;
+		weatherError = false;
+		try {
+			const nextForecast = await fetchPrecipitationForecast(bounds, fetch, forceRefresh);
+			forecast = nextForecast;
+			forecastFrameIndex = nearestForecastFrameIndex(nextForecast.times, requestedTime);
+			weatherEnabled = true;
+			updateForecastLayer();
+		} catch (error) {
+			console.warn('Weather forecast unavailable:', error);
+			if (!hadForecast) {
+				weatherError = true;
+				weatherEnabled = false;
+				removeForecastLayer();
+			}
+		} finally {
+			weatherLoading = false;
+		}
+	}
+
+	function selectForecastFrame(index: number) {
+		stopWeatherAnimation();
+		if (!forecast) return;
+		forecastFrameIndex = Math.max(0, Math.min(index, forecast.times.length - 1));
+		updateForecastLayer();
+	}
+
+	function selectForecastDate(value: string) {
+		if (!forecast) return;
+		const timestamp = Date.parse(`${value}Z`) / 1000;
+		if (!Number.isFinite(timestamp)) return;
+		selectForecastFrame(nearestForecastFrameIndex(forecast.times, timestamp));
+	}
+
+	function jumpToCurrentForecast() {
+		if (!forecast) return;
+		selectForecastFrame(nearestForecastFrameIndex(forecast.times, Date.now() / 1000));
+	}
+
+	function toggleForecastAnimation() {
+		if (weatherPlaying) {
+			stopWeatherAnimation();
+			return;
+		}
+		if (!forecast || forecast.times.length < 2) return;
+		if (forecastFrameIndex >= forecast.times.length - 1) {
+			forecastFrameIndex = nearestForecastFrameIndex(
+				forecast.times,
+				Math.ceil(Date.now() / 3_600_000) * 3_600
+			);
+			updateForecastLayer();
+		}
+		weatherPlaying = true;
+		radarAnimationTimer = setInterval(() => {
+			if (!forecast || forecastFrameIndex >= forecast.times.length - 1) {
+				stopWeatherAnimation();
+				return;
+			}
+			forecastFrameIndex += 1;
+			updateForecastLayer();
+		}, 900);
+	}
+
 	function updateRadarLayer() {
-		if (!map || !weatherEnabled || !radarTimeline || !selectedRadarFrame) return;
+		if (!map || !weatherEnabled || weatherMode !== 'radar' || !radarTimeline || !selectedRadarFrame)
+			return;
 		const url = radarTileUrl(radarTimeline, selectedRadarFrame);
 		if (radarLayer) {
 			radarTilesLoading = true;
@@ -230,15 +405,37 @@
 	function setWeatherEnabled(enabled: boolean) {
 		weatherEnabled = enabled;
 		if (!enabled) {
-			stopRadarAnimation();
+			stopWeatherAnimation();
 			removeRadarLayer();
+			removeForecastLayer();
 			return;
 		}
-		if (radarFrames.length === 0) {
-			void loadRadar();
+		if (weatherMode === 'forecast') {
+			removeRadarLayer();
+			if (!forecast) void loadForecast();
+			else updateForecastLayer();
 		} else {
-			radarFrameIndex = radarFrames.length - 1;
+			removeForecastLayer();
+			if (radarFrames.length === 0) void loadRadar();
+			else updateRadarLayer();
+		}
+	}
+
+	function selectWeatherMode(mode: 'forecast' | 'radar') {
+		if (weatherMode === mode) return;
+		stopWeatherAnimation();
+		weatherMode = mode;
+		weatherError = false;
+		removeRadarLayer();
+		removeForecastLayer();
+		if (!weatherEnabled) return;
+		if (mode === 'forecast') {
+			if (forecast) updateForecastLayer();
+			else void loadForecast();
+		} else if (radarFrames.length > 0) {
 			updateRadarLayer();
+		} else {
+			void loadRadar();
 		}
 	}
 
@@ -248,7 +445,7 @@
 	}
 
 	function selectRadarFrame(index: number) {
-		stopRadarAnimation();
+		stopWeatherAnimation();
 		radarFrameIndex = Math.max(0, Math.min(index, radarFrames.length - 1));
 		updateRadarLayer();
 	}
@@ -259,7 +456,7 @@
 
 	function toggleRadarAnimation() {
 		if (weatherPlaying) {
-			stopRadarAnimation();
+			stopWeatherAnimation();
 			return;
 		}
 		if (radarFrames.length < 2) return;
@@ -270,7 +467,7 @@
 		weatherPlaying = true;
 		radarAnimationTimer = setInterval(() => {
 			if (radarFrameIndex >= radarFrames.length - 1) {
-				stopRadarAnimation();
+				stopWeatherAnimation();
 				return;
 			}
 			radarFrameIndex += 1;
@@ -278,9 +475,10 @@
 		}, 1500);
 	}
 
-	function updateRadarOpacity(value: number) {
+	function updateWeatherOpacity(value: number) {
 		weatherOpacity = value;
 		radarLayer?.setOpacity(value / 100);
+		updateForecastLayer();
 	}
 
 	function updateMarkerAccessibility(marker: L.Marker, waypoint: Waypoint, index: number) {
@@ -562,6 +760,11 @@
 				addWaypoint(e.latlng);
 			}
 		});
+		map.on('moveend', () => {
+			if (!weatherEnabled || weatherMode !== 'forecast') return;
+			if (forecastMoveTimer) clearTimeout(forecastMoveTimer);
+			forecastMoveTimer = setTimeout(() => void loadForecast(false), 350);
+		});
 
 		// Trigger size recalculation in case container layout is computing
 		requestAnimationFrame(() => {
@@ -581,7 +784,9 @@
 
 		radarRefreshTimer = setInterval(
 			() => {
-				if (weatherEnabled && document.visibilityState === 'visible') void loadRadar(true);
+				if (!weatherEnabled || document.visibilityState !== 'visible') return;
+				if (weatherMode === 'radar') void loadRadar(true);
+				else void loadForecast(true);
 			},
 			5 * 60 * 1000
 		);
@@ -589,7 +794,8 @@
 
 	onDestroy(() => {
 		if (feedbackTimer) clearTimeout(feedbackTimer);
-		stopRadarAnimation();
+		stopWeatherAnimation();
+		if (forecastMoveTimer) clearTimeout(forecastMoveTimer);
 		if (radarRefreshTimer) clearInterval(radarRefreshTimer);
 		if (resizeObserver) {
 			resizeObserver.disconnect();
@@ -706,8 +912,18 @@
 				>
 					<div class="min-w-0">
 						<div class="flex flex-wrap items-center gap-2">
-							<h2 class="text-sm font-bold">{m.map_weather_title()}</h2>
-							{#if selectedRadarFrame}
+							<h2 class="text-sm font-bold">
+								{weatherMode === 'forecast'
+									? m.map_weather_forecast()
+									: m.map_weather_radar_title()}
+							</h2>
+							{#if weatherMode === 'forecast'}
+								<span
+									class="rounded-full border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-violet-200 uppercase"
+								>
+									{m.map_weather_forecast_badge()}
+								</span>
+							{:else if selectedRadarFrame}
 								<span
 									class={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
 										radarShowingHistory
@@ -725,7 +941,11 @@
 								</span>
 							{/if}
 						</div>
-						<p class="mt-1 text-[11px] text-slate-400">{m.map_weather_history()}</p>
+						<p class="mt-1 text-[11px] text-slate-400">
+							{weatherMode === 'forecast'
+								? m.map_weather_forecast_summary()
+								: m.map_weather_history()}
+						</p>
 					</div>
 					<div class="flex shrink-0 items-center gap-1">
 						<button
@@ -760,25 +980,190 @@
 					</div>
 				</div>
 
+				<div
+					class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1"
+					role="tablist"
+					aria-label={m.map_weather_title()}
+				>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={weatherMode === 'forecast'}
+						disabled={weatherLoading}
+						onclick={() => selectWeatherMode('forecast')}
+						class={`min-h-11 rounded-lg px-2 text-xs font-bold transition-colors ${
+							weatherMode === 'forecast'
+								? 'bg-violet-500 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-800 hover:text-white'
+						}`}
+					>
+						{m.map_weather_forecast()}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={weatherMode === 'radar'}
+						disabled={weatherLoading}
+						onclick={() => selectWeatherMode('radar')}
+						class={`min-h-11 rounded-lg px-2 text-xs font-bold transition-colors ${
+							weatherMode === 'radar'
+								? 'bg-cyan-500 text-slate-950 shadow-sm'
+								: 'text-slate-400 hover:bg-slate-800 hover:text-white'
+						}`}
+					>
+						{m.map_weather_radar()}
+					</button>
+				</div>
+
 				{#if weatherLoading}
 					<div
 						class="mt-4 flex min-h-20 items-center justify-center gap-2 text-sm text-slate-300"
 						role="status"
 					>
 						<Icon name="loader" class="h-4 w-4 text-cyan-400" />
-						<span>{m.map_weather_loading()}</span>
+						<span
+							>{weatherMode === 'forecast'
+								? m.map_weather_forecast_loading()
+								: m.map_weather_loading()}</span
+						>
 					</div>
 				{:else if weatherError}
 					<div class="mt-4 rounded-xl border border-amber-500/30 bg-amber-950/30 p-3" role="alert">
-						<p class="text-sm text-amber-100">{m.map_weather_error()}</p>
+						<p class="text-sm text-amber-100">
+							{weatherMode === 'forecast' ? m.map_weather_forecast_error() : m.map_weather_error()}
+						</p>
 						<button
 							type="button"
-							onclick={() => loadRadar(true)}
+							onclick={() => (weatherMode === 'forecast' ? loadForecast(true) : loadRadar(true))}
 							class="mt-2 min-h-11 rounded-lg bg-amber-400 px-3 text-xs font-bold text-slate-950 hover:bg-amber-300"
 						>
 							{m.map_weather_retry()}
 						</button>
 					</div>
+				{:else if weatherMode === 'forecast' && forecast && selectedForecastTime}
+					<div class="mt-4">
+						<label
+							for="forecast-datetime"
+							class="mb-1.5 block text-[11px] font-semibold text-slate-300"
+						>
+							{m.map_weather_forecast_datetime()}
+						</label>
+						<input
+							id="forecast-datetime"
+							type="datetime-local"
+							value={formatDateTimeInput(selectedForecastTime)}
+							min={formatDateTimeInput(
+								forecast.times[nearestForecastFrameIndex(forecast.times, Date.now() / 1000)]
+							)}
+							max={formatDateTimeInput(forecast.times[forecast.times.length - 1])}
+							step="3600"
+							disabled={!weatherEnabled}
+							onchange={(event) => selectForecastDate(event.currentTarget.value)}
+							class="min-h-11 w-full rounded-lg border border-violet-500/40 bg-slate-900 px-3 py-2 font-mono text-sm font-semibold text-white scheme-dark focus:border-violet-400 focus:ring-violet-400 disabled:opacity-40"
+						/>
+					</div>
+
+					<div class="mt-3 rounded-xl border border-violet-400/20 bg-violet-950/25 p-3">
+						<div class="flex items-start justify-between gap-3">
+							<div role="status" aria-live="polite">
+								<p class="font-mono text-base font-bold text-white">
+									{formatForecastDateTime(selectedForecastTime)} UTC
+								</p>
+								<p class="mt-1 text-[11px] font-semibold text-violet-200">
+									{m.map_weather_forecast_peak({
+										amount: forecastFrameStats.peak.toFixed(1)
+									})}
+									· {m.map_weather_forecast_chance({
+										probability: String(Math.round(forecastFrameStats.probability))
+									})}
+								</p>
+							</div>
+							<button
+								type="button"
+								onclick={jumpToCurrentForecast}
+								class="min-h-8 shrink-0 rounded-md px-2 text-[11px] font-bold text-violet-200 hover:bg-violet-900/60"
+							>
+								{m.map_weather_forecast_now()}
+							</button>
+						</div>
+					</div>
+
+					<div class="mt-3 flex items-center gap-3">
+						<div class="flex w-12 shrink-0 flex-col items-center gap-1">
+							<button
+								type="button"
+								onclick={toggleForecastAnimation}
+								disabled={!weatherEnabled || forecast.times.length < 2}
+								aria-label={weatherPlaying
+									? m.map_weather_forecast_pause()
+									: forecastFrameIndex === forecast.times.length - 1
+										? m.map_weather_forecast_replay()
+										: m.map_weather_forecast_play()}
+								class="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-violet-400 text-slate-950 shadow-lg shadow-violet-950/40 hover:bg-violet-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+							>
+								<Icon name={weatherPlaying ? 'pause' : 'play'} class="h-4 w-4" />
+							</button>
+							<span class="text-[9px] font-semibold text-slate-400">
+								{weatherPlaying
+									? m.map_weather_pause_short()
+									: forecastFrameIndex === forecast.times.length - 1
+										? m.map_weather_replay_short()
+										: m.map_weather_play_short()}
+							</span>
+						</div>
+						<div class="min-w-0 flex-1">
+							<input
+								type="range"
+								min={nearestForecastFrameIndex(forecast.times, Date.now() / 1000)}
+								max={forecast.times.length - 1}
+								step="1"
+								value={forecastFrameIndex}
+								disabled={!weatherEnabled}
+								oninput={(event) => selectForecastFrame(Number(event.currentTarget.value))}
+								aria-label={m.map_weather_forecast_time()}
+								aria-valuetext={`${formatForecastDateTime(selectedForecastTime)} UTC`}
+								class="h-7 w-full cursor-pointer accent-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+							/>
+							<div
+								class="flex justify-between font-mono text-[9px] text-slate-500"
+								aria-hidden="true"
+							>
+								<span>{m.map_weather_forecast_now()}</span>
+								<span>{formatForecastDateTime(forecast.times[forecast.times.length - 1])}</span>
+							</div>
+						</div>
+					</div>
+
+					<details class="mt-3 rounded-xl border border-slate-800 bg-slate-900/70">
+						<summary
+							class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-[11px] font-semibold text-slate-300"
+						>
+							<span>{m.map_weather_display()}</span>
+							<span class="flex items-center gap-1.5 font-mono text-slate-400">
+								{weatherOpacity}%
+								<Icon name="chevron-down" class="weather-display-chevron h-3.5 w-3.5" />
+							</span>
+						</summary>
+						<div class="border-t border-slate-800 px-3 pt-2 pb-3">
+							<label for="forecast-opacity" class="sr-only">{m.map_weather_opacity()}</label>
+							<input
+								id="forecast-opacity"
+								type="range"
+								min="30"
+								max="85"
+								step="5"
+								value={weatherOpacity}
+								disabled={!weatherEnabled}
+								oninput={(event) => updateWeatherOpacity(Number(event.currentTarget.value))}
+								class="h-7 w-full cursor-pointer accent-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
+							/>
+							<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+								<span>{m.map_weather_light()}</span>
+								<span class="weather-legend h-1.5 flex-1 rounded-full"></span>
+								<span>{m.map_weather_heavy()}</span>
+							</div>
+						</div>
+					</details>
 				{:else if selectedRadarFrame}
 					<div class="mt-4">
 						<label
@@ -858,7 +1243,7 @@
 								value={radarFrameIndex}
 								disabled={!weatherEnabled}
 								oninput={(event) => {
-									stopRadarAnimation();
+									stopWeatherAnimation();
 									radarFrameIndex = Number(event.currentTarget.value);
 								}}
 								onchange={() => updateRadarLayer()}
@@ -898,7 +1283,7 @@
 								step="5"
 								value={weatherOpacity}
 								disabled={!weatherEnabled}
-								oninput={(event) => updateRadarOpacity(Number(event.currentTarget.value))}
+								oninput={(event) => updateWeatherOpacity(Number(event.currentTarget.value))}
 								class="h-7 w-full cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
 							/>
 							<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
@@ -911,12 +1296,14 @@
 				{/if}
 
 				<a
-					href="https://www.rainviewer.com/"
+					href={weatherMode === 'forecast'
+						? 'https://open-meteo.com/'
+						: 'https://www.rainviewer.com/'}
 					target="_blank"
 					rel="noreferrer"
 					class="mt-3 inline-block text-[10px] text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-slate-300"
 				>
-					{m.map_weather_source()}
+					{weatherMode === 'forecast' ? m.map_weather_forecast_source() : m.map_weather_source()}
 				</a>
 			</section>
 		{/if}
@@ -1003,6 +1390,11 @@
 	}
 
 	:global(.weather-radar-tiles) {
+		mix-blend-mode: screen;
+	}
+
+	:global(.forecast-precipitation-cell) {
+		filter: blur(22px) saturate(1.35);
 		mix-blend-mode: screen;
 	}
 
