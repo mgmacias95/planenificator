@@ -2,6 +2,10 @@
 	import { calculationStore } from '$lib/state/calculation.svelte';
 	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
+
+	function isTechnicalError(error: string) {
+		return error.includes('Traceback') || error.includes('File "') || error.includes('pyodide');
+	}
 </script>
 
 <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/90 shadow-lg">
@@ -38,15 +42,25 @@
 	</div>
 
 	{#if calculationStore.error}
-		<div
-			class="border-b border-rose-900/50 bg-rose-950/40 p-4 font-mono text-xs text-rose-300"
-			role="alert"
-		>
-			<div class="mb-1 flex items-center gap-1.5 font-bold">
+		<div class="border-b border-rose-900/50 bg-rose-950/40 p-4 text-sm text-rose-200" role="alert">
+			<div class="flex items-center gap-2 font-semibold">
 				<Icon name="alert-triangle" class="h-4 w-4 text-rose-400" />
-				<span>Flight Calculation Error:</span>
+				<span>{m.calculation_error_title()}</span>
 			</div>
-			<div>{calculationStore.error}</div>
+			<p class="mt-1.5 leading-relaxed">
+				{isTechnicalError(calculationStore.error)
+					? m.calculation_error_message()
+					: calculationStore.error}
+			</p>
+			{#if isTechnicalError(calculationStore.error)}
+				<details class="mt-3 text-xs text-slate-400">
+					<summary class="cursor-pointer font-medium text-slate-300"
+						>{m.technical_details()}</summary
+					>
+					<pre
+						class="mt-2 max-h-36 overflow-auto rounded-lg bg-slate-950/80 p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">{calculationStore.error}</pre>
+				</details>
+			{/if}
 		</div>
 	{/if}
 

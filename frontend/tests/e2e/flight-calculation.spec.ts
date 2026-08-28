@@ -19,14 +19,11 @@ test.describe('Flight Calculation & Safety Briefing', () => {
 		const calcBtn = page.locator('#calculate-btn');
 		await expect(calcBtn).toBeVisible();
 
-		// Verify NavLog table placeholder is present
-		await expect(page.locator('#nav-log-table')).toBeVisible();
-		await expect(page.getByText('No route calculated yet')).toBeVisible();
+		await expect(calcBtn).toBeDisabled();
+		await expect(page.getByText('Add at least 2 waypoints to calculate.')).toBeVisible();
 
-		// Safety tab checks
-		await page.getByRole('button', { name: 'Safety' }).click();
-		await expect(
-			page.getByText('Calculate a route to perform semicircular rule safety checks')
-		).toBeVisible();
+		// Results and safety information stay out of the map workspace until a calculation exists.
+		await expect(page.locator('#nav-log-table')).not.toBeAttached();
+		await expect(page.locator('#results-resize-handle')).not.toBeAttached();
 	});
 });
