@@ -13,7 +13,8 @@
 		fetchWeatherForecast,
 		nearestForecastFrameIndex,
 		type ForecastBounds,
-		type WeatherForecast
+		type WeatherForecast,
+		type WindLevel
 	} from '$lib/services/weather-forecast';
 	import { renderForecastField } from '$lib/services/weather-forecast-field';
 	import { WindFlowAnimator } from '$lib/services/weather-wind-flow';
@@ -44,7 +45,8 @@
 	let forecastAttributionVisible = false;
 	let lastAutoFitRouteKey = '';
 	let weatherMode = $state<'forecast' | 'radar'>('forecast');
-	let forecastLayerMode = $state<'precipitation' | 'wind'>('precipitation');
+	let forecastLayerMode = $state<'precipitation' | 'wind' | 'combined'>('precipitation');
+	let windLevel = $state<WindLevel>('surface');
 	let weatherPanelOpen = $state(false);
 	let weatherEnabled = $state(false);
 	let weatherLoading = $state(false);
@@ -77,7 +79,7 @@
 		forecast && forecast.points.length > 0
 			? forecast.points.reduce(
 					(summary, point) => {
-						const speed = point.windSpeed[forecastFrameIndex] ?? 0;
+						const speed = point.winds[windLevel].speed[forecastFrameIndex] ?? 0;
 						return {
 							total: summary.total + speed,
 							peak: Math.max(summary.peak, speed),
@@ -233,6 +235,29 @@
 		};
 	}
 
+	function showsWindLayer() {
+		return forecastLayerMode === 'wind' || forecastLayerMode === 'combined';
+	}
+
+	function showsPrecipitationLayer() {
+		return forecastLayerMode === 'precipitation' || forecastLayerMode === 'combined';
+	}
+
+	function windLevelLabel(level: WindLevel) {
+		switch (level) {
+			case '925hPa':
+				return m.map_weather_wind_level_925();
+			case '850hPa':
+				return m.map_weather_wind_level_850();
+			case '700hPa':
+				return m.map_weather_wind_level_700();
+			case '500hPa':
+				return m.map_weather_wind_level_500();
+			default:
+				return m.map_weather_wind_level_surface();
+		}
+	}
+
 	function updateForecastLayer() {
 		if (!map || !weatherEnabled || weatherMode !== 'forecast' || !forecast) return;
 		if (!forecastAttributionVisible) {
@@ -241,34 +266,38 @@
 			);
 			forecastAttributionVisible = true;
 		}
-		if (forecastLayerMode === 'wind') {
+		if (!showsPrecipitationLayer()) {
 			if (forecastLayer) map.removeLayer(forecastLayer);
 			forecastLayer = null;
+		} else {
+			const image = renderForecastField(forecast, forecastFrameIndex, weatherOpacity);
+			const bounds = L.latLngBounds(
+				[forecast.bounds.south, forecast.bounds.west],
+				[forecast.bounds.north, forecast.bounds.east]
+			);
+			if (!forecastLayer) {
+				forecastLayer = L.imageOverlay(image, bounds, {
+					pane: 'weatherPane',
+					className: 'weather-forecast-field',
+					interactive: false
+				}).addTo(map);
+			} else {
+				forecastLayer.setUrl(image);
+				forecastLayer.setBounds(bounds);
+			}
+		}
+		if (showsWindLayer()) {
 			windFlow?.update(
 				forecast,
 				forecastFrameIndex,
+				windLevel,
 				(latitude, longitude) => map!.latLngToContainerPoint([latitude, longitude]),
 				mapContainer.clientWidth,
 				mapContainer.clientHeight,
 				weatherOpacity
 			);
-			return;
-		}
-		windFlow?.stop(true);
-		const image = renderForecastField(forecast, forecastFrameIndex, weatherOpacity);
-		const bounds = L.latLngBounds(
-			[forecast.bounds.south, forecast.bounds.west],
-			[forecast.bounds.north, forecast.bounds.east]
-		);
-		if (!forecastLayer) {
-			forecastLayer = L.imageOverlay(image, bounds, {
-				pane: 'weatherPane',
-				className: 'weather-forecast-field',
-				interactive: false
-			}).addTo(map);
 		} else {
-			forecastLayer.setUrl(image);
-			forecastLayer.setBounds(bounds);
+			windFlow?.stop(true);
 		}
 	}
 
@@ -284,9 +313,15 @@
 		forecastAttributionVisible = false;
 	}
 
-	function selectForecastLayer(mode: 'precipitation' | 'wind') {
+	function selectForecastLayer(mode: 'precipitation' | 'wind' | 'combined') {
 		if (forecastLayerMode === mode) return;
 		forecastLayerMode = mode;
+		updateForecastLayer();
+	}
+
+	function selectWindLevel(level: WindLevel) {
+		if (windLevel === level) return;
+		windLevel = level;
 		updateForecastLayer();
 	}
 
@@ -788,7 +823,7 @@
 			}
 		});
 		map.on('movestart zoomstart', () => {
-			if (forecastLayerMode === 'wind') windFlow?.stop(true);
+			if (showsWindLayer()) windFlow?.stop(true);
 		});
 		map.on('moveend', () => {
 			if (!weatherEnabled || weatherMode !== 'forecast') return;
@@ -805,7 +840,7 @@
 			resizeObserver = new ResizeObserver(() => {
 				requestAnimationFrame(() => {
 					map?.invalidateSize();
-					if (forecastLayerMode === 'wind') updateForecastLayer();
+					if (showsWindLayer()) updateForecastLayer();
 				});
 			});
 			resizeObserver.observe(mapContainer);
@@ -861,7 +896,7 @@
 	></div>
 	<canvas
 		bind:this={windCanvas}
-		class:hidden={!weatherEnabled || weatherMode !== 'forecast' || forecastLayerMode !== 'wind'}
+		class:hidden={!weatherEnabled || weatherMode !== 'forecast' || !showsWindLayer()}
 		class="pointer-events-none absolute inset-0 h-full w-full"
 		style="z-index: 425"
 		aria-hidden="true"
@@ -986,9 +1021,11 @@
 						</div>
 						<p class="mt-1 text-[11px] text-slate-400">
 							{weatherMode === 'forecast'
-								? forecastLayerMode === 'wind'
-									? m.map_weather_wind_summary()
-									: m.map_weather_forecast_summary()
+								? forecastLayerMode === 'combined'
+									? m.map_weather_combined_summary()
+									: forecastLayerMode === 'wind'
+										? m.map_weather_wind_summary()
+										: m.map_weather_forecast_summary()
 								: m.map_weather_history()}
 						</p>
 					</div>
@@ -1091,12 +1128,13 @@
 							{m.map_weather_forecast_layer()}
 						</p>
 						<div
-							class="grid grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1"
+							class="grid grid-cols-3 gap-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1"
 							role="group"
 							aria-label={m.map_weather_forecast_layer()}
 						>
 							<button
 								type="button"
+								aria-label={m.map_weather_precipitation()}
 								aria-pressed={forecastLayerMode === 'precipitation'}
 								onclick={() => selectForecastLayer('precipitation')}
 								class={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold transition-colors ${
@@ -1105,11 +1143,11 @@
 										: 'text-slate-400 hover:bg-slate-800 hover:text-white'
 								}`}
 							>
-								<Icon name="cloud" class="h-4 w-4" />
-								{m.map_weather_precipitation()}
+								{m.map_weather_rain_short()}
 							</button>
 							<button
 								type="button"
+								aria-label={m.map_weather_wind()}
 								aria-pressed={forecastLayerMode === 'wind'}
 								onclick={() => selectForecastLayer('wind')}
 								class={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold transition-colors ${
@@ -1118,11 +1156,51 @@
 										: 'text-slate-400 hover:bg-slate-800 hover:text-white'
 								}`}
 							>
-								<Icon name="wind" class="h-4 w-4" />
-								{m.map_weather_wind()}
+								{m.map_weather_wind_short()}
+							</button>
+							<button
+								type="button"
+								aria-pressed={forecastLayerMode === 'combined'}
+								onclick={() => selectForecastLayer('combined')}
+								class={`min-h-11 rounded-lg px-2 text-xs font-bold transition-colors ${
+									forecastLayerMode === 'combined'
+										? 'bg-violet-400 text-slate-950 shadow-sm'
+										: 'text-slate-400 hover:bg-slate-800 hover:text-white'
+								}`}
+							>
+								{m.map_weather_both()}
 							</button>
 						</div>
 					</div>
+
+					{#if showsWindLayer()}
+						<div class="mt-3">
+							<label
+								for="wind-altitude"
+								class="mb-1.5 block text-[11px] font-semibold text-slate-300"
+							>
+								{m.map_weather_wind_altitude()}
+							</label>
+							<select
+								id="wind-altitude"
+								value={windLevel}
+								disabled={!weatherEnabled}
+								onchange={(event) => selectWindLevel(event.currentTarget.value as WindLevel)}
+								class="min-h-11 w-full rounded-lg border border-cyan-500/40 bg-slate-900 px-3 py-2 text-sm font-semibold text-white scheme-dark focus:border-cyan-400 focus:ring-cyan-400 disabled:opacity-40"
+							>
+								<option value="surface">{m.map_weather_wind_level_surface()}</option>
+								<option value="925hPa">{m.map_weather_wind_level_925()}</option>
+								<option value="850hPa">{m.map_weather_wind_level_850()}</option>
+								<option value="700hPa">{m.map_weather_wind_level_700()}</option>
+								<option value="500hPa">{m.map_weather_wind_level_500()}</option>
+							</select>
+							{#if windLevel !== 'surface'}
+								<p class="mt-1.5 text-[10px] text-slate-500">
+									{m.map_weather_wind_pressure_note()}
+								</p>
+							{/if}
+						</div>
+					{/if}
 
 					<div class="mt-4">
 						<label
@@ -1152,17 +1230,7 @@
 								<p class="font-mono text-base font-bold text-white">
 									{formatForecastDateTime(selectedForecastTime)} UTC
 								</p>
-								{#if forecastLayerMode === 'wind'}
-									<p class="mt-1 text-[11px] font-semibold text-cyan-200">
-										{m.map_weather_wind_speed({
-											average: (forecastWindStats.total / forecastWindStats.count).toFixed(0),
-											peak: forecastWindStats.peak.toFixed(0)
-										})}
-									</p>
-									<p class="mt-0.5 text-[10px] text-slate-400">
-										{m.map_weather_wind_height()}
-									</p>
-								{:else}
+								{#if showsPrecipitationLayer()}
 									<p class="mt-1 text-[11px] font-semibold text-violet-200">
 										{m.map_weather_forecast_peak({
 											amount: forecastFrameStats.peak.toFixed(1)
@@ -1170,6 +1238,17 @@
 										· {m.map_weather_forecast_chance({
 											probability: String(Math.round(forecastFrameStats.probability))
 										})}
+									</p>
+								{/if}
+								{#if showsWindLayer()}
+									<p class="mt-1 text-[11px] font-semibold text-cyan-200">
+										{m.map_weather_wind_speed({
+											average: (forecastWindStats.total / forecastWindStats.count).toFixed(0),
+											peak: forecastWindStats.peak.toFixed(0)
+										})}
+									</p>
+									<p class="mt-0.5 text-[10px] text-slate-400">
+										{windLevelLabel(windLevel)}
 									</p>
 								{/if}
 							</div>
@@ -1243,7 +1322,7 @@
 							<label for="forecast-opacity" class="sr-only"
 								>{forecastLayerMode === 'wind'
 									? m.map_weather_wind_opacity()
-									: m.map_weather_opacity()}</label
+									: m.map_weather_forecast_opacity()}</label
 							>
 							<input
 								id="forecast-opacity"
@@ -1256,23 +1335,20 @@
 								oninput={(event) => updateWeatherOpacity(Number(event.currentTarget.value))}
 								class="h-7 w-full cursor-pointer accent-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
 							/>
-							<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
-								<span
-									>{forecastLayerMode === 'wind'
-										? m.map_weather_calm()
-										: m.map_weather_light()}</span
-								>
-								<span
-									class:wind-legend={forecastLayerMode === 'wind'}
-									class:weather-legend={forecastLayerMode === 'precipitation'}
-									class="h-1.5 flex-1 rounded-full"
-								></span>
-								<span
-									>{forecastLayerMode === 'wind'
-										? m.map_weather_strong()
-										: m.map_weather_heavy()}</span
-								>
-							</div>
+							{#if showsPrecipitationLayer()}
+								<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+									<span>{m.map_weather_light()}</span>
+									<span class="weather-legend h-1.5 flex-1 rounded-full"></span>
+									<span>{m.map_weather_heavy()}</span>
+								</div>
+							{/if}
+							{#if showsWindLayer()}
+								<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+									<span>{m.map_weather_calm()}</span>
+									<span class="wind-legend h-1.5 flex-1 rounded-full"></span>
+									<span>{m.map_weather_strong()}</span>
+								</div>
+							{/if}
 						</div>
 					</details>
 				{:else if selectedRadarFrame}
