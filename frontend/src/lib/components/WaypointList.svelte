@@ -65,16 +65,14 @@
 
 <div class="space-y-3">
 	<div class="flex items-center justify-between">
-		<h3
-			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
-		>
+		<h3 class="flex items-center gap-2 text-sm font-semibold text-slate-200">
 			<Icon name="map-pin" class="h-3.5 w-3.5 text-cyan-400" />
 			<span>3. {m.section_waypoints()}</span>
 		</h3>
 		<button
 			type="button"
 			onclick={promptNewSegment}
-			class="flex cursor-pointer items-center gap-1 rounded-md border border-cyan-500/30 bg-slate-800 px-2 py-1 text-[11px] font-medium text-cyan-400 transition-colors hover:bg-slate-700 hover:text-cyan-300"
+			class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-cyan-300 transition-colors hover:bg-slate-700 hover:text-cyan-200"
 		>
 			<Icon name="plus" class="h-3 w-3" />
 			<span>{m.btn_new_segment()}</span>
@@ -83,7 +81,7 @@
 
 	{#if flightPlanStore.waypoints.length === 0}
 		<div
-			class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center text-xs text-slate-400"
+			class="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 p-4 text-center text-sm leading-relaxed text-slate-300"
 		>
 			{m.waypoints_empty_hint()}
 		</div>
@@ -97,7 +95,7 @@
 				{@const segNotices = getSegmentNotices(sIdx)}
 
 				<div
-					class="overflow-hidden rounded-lg border bg-slate-900/90 shadow-xs transition-all"
+					class="overflow-hidden rounded-xl border bg-slate-900/90 shadow-xs transition-all"
 					style:border-color={isActive && isLastSegment ? segColor : '#1e293b'}
 					style:border-left-width="4px"
 					style:border-left-color={segColor}

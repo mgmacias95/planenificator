@@ -57,14 +57,14 @@
 
 {#if isOpen}
 	<div
-		class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
+		class="modal-safe fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-xs"
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
 		onkeydown={handleKeyDown}
 	>
 		<div
-			class="w-full max-w-md space-y-4 rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-2xl"
+			class="max-h-full w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl"
 		>
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-slate-800 pb-3">

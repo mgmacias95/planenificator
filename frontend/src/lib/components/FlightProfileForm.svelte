@@ -100,9 +100,7 @@
 	<!-- Step 1: Aircraft Profile & Performance (Top) -->
 	<div class="space-y-2.5">
 		<div class="flex items-center justify-between">
-			<h3
-				class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
-			>
+			<h3 class="flex items-center gap-2 text-sm font-semibold text-slate-200">
 				<Icon name="plane" class="h-3.5 w-3.5 text-cyan-400" />
 				<span>1. {m.section_performance()}</span>
 			</h3>
@@ -110,7 +108,7 @@
 			<button
 				type="button"
 				onclick={() => (isPerformanceExpanded = !isPerformanceExpanded)}
-				class="flex cursor-pointer items-center gap-1 text-[11px] text-slate-500 transition-colors hover:text-slate-300"
+				class="flex cursor-pointer items-center gap-1 text-xs text-slate-400 transition-colors hover:text-slate-200"
 			>
 				<Icon name={isPerformanceExpanded ? 'chevron-down' : 'chevron-right'} class="h-3 w-3" />
 				<span>{isPerformanceExpanded ? 'Hide Details' : 'Edit Performance'}</span>
@@ -118,7 +116,7 @@
 		</div>
 
 		<!-- Reusable Aircraft Profile Selector -->
-		<div class="rounded-lg border border-slate-800 bg-slate-950 p-2.5">
+		<div class="rounded-xl border border-slate-700/80 bg-slate-950/70 p-3 shadow-xs">
 			<div class="mb-1 flex items-center justify-between">
 				<label for="aircraft-preset-select" class="block text-[11px] font-medium text-slate-400">
 					{m.profile_airframe_label ? m.profile_airframe_label() : 'Aircraft Airframe / Profile'}
@@ -368,9 +366,7 @@
 	<!-- Step 2: Aerodromes, Timing & Fuel -->
 	<div class="space-y-2.5">
 		<div class="flex items-center justify-between">
-			<h3
-				class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
-			>
+			<h3 class="flex items-center gap-2 text-sm font-semibold text-slate-200">
 				<Icon name="map-pin" class="h-3.5 w-3.5 text-cyan-400" />
 				<span>2. {m.section_aerodromes()}</span>
 			</h3>
@@ -385,68 +381,70 @@
 			</button>
 		</div>
 
-		<div class="grid grid-cols-2 gap-2">
+		<div class="space-y-3 rounded-xl border border-slate-700/80 bg-slate-950/70 p-3 shadow-xs">
+			<div class="grid grid-cols-2 gap-2">
+				<div>
+					<label for="dep-input" class="mb-1 block text-[11px] font-medium text-slate-400">
+						{m.label_dep_icao()}
+					</label>
+					<input
+						id="dep-input"
+						type="text"
+						placeholder="e.g. LEBA"
+						value={flightPlanStore.profile.depIcao}
+						oninput={(e) =>
+							flightPlanStore.updateProfile({
+								depIcao: (e.target as HTMLInputElement).value.toUpperCase()
+							})}
+						class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-hidden"
+					/>
+				</div>
+
+				<div>
+					<label for="dest-input" class="mb-1 block text-[11px] font-medium text-slate-400">
+						{m.label_dest_icao()}
+					</label>
+					<input
+						id="dest-input"
+						type="text"
+						placeholder="e.g. LEMD"
+						value={flightPlanStore.profile.destIcao}
+						oninput={(e) =>
+							flightPlanStore.updateProfile({
+								destIcao: (e.target as HTMLInputElement).value.toUpperCase()
+							})}
+						class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-hidden"
+					/>
+				</div>
+			</div>
+
 			<div>
-				<label for="dep-input" class="mb-1 block text-[11px] font-medium text-slate-400">
-					{m.label_dep_icao()}
+				<label for="alt-input" class="mb-1 block text-[11px] font-medium text-slate-400">
+					{m.label_alternates()}
 				</label>
 				<input
-					id="dep-input"
+					id="alt-input"
 					type="text"
-					placeholder="e.g. LEBA"
-					value={flightPlanStore.profile.depIcao}
-					oninput={(e) =>
-						flightPlanStore.updateProfile({
-							depIcao: (e.target as HTMLInputElement).value.toUpperCase()
-						})}
+					placeholder="e.g. LETO, LEVS"
+					value={alternatesInput}
+					oninput={handleAlternatesChange}
 					class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-hidden"
 				/>
 			</div>
 
 			<div>
-				<label for="dest-input" class="mb-1 block text-[11px] font-medium text-slate-400">
-					{m.label_dest_icao()}
+				<label for="dep-time-input" class="mb-1 block text-[11px] font-medium text-slate-400">
+					{m.label_dep_time()}
 				</label>
 				<input
-					id="dest-input"
-					type="text"
-					placeholder="e.g. LEMD"
-					value={flightPlanStore.profile.destIcao}
+					id="dep-time-input"
+					type="datetime-local"
+					value={flightPlanStore.profile.departureTime}
 					oninput={(e) =>
-						flightPlanStore.updateProfile({
-							destIcao: (e.target as HTMLInputElement).value.toUpperCase()
-						})}
-					class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-hidden"
+						flightPlanStore.updateProfile({ departureTime: (e.target as HTMLInputElement).value })}
+					class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 				/>
 			</div>
-		</div>
-
-		<div>
-			<label for="alt-input" class="mb-1 block text-[11px] font-medium text-slate-400">
-				{m.label_alternates()}
-			</label>
-			<input
-				id="alt-input"
-				type="text"
-				placeholder="e.g. LETO, LEVS"
-				value={alternatesInput}
-				oninput={handleAlternatesChange}
-				class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-hidden"
-			/>
-		</div>
-
-		<div>
-			<label for="dep-time-input" class="mb-1 block text-[11px] font-medium text-slate-400">
-				{m.label_dep_time()}
-			</label>
-			<input
-				id="dep-time-input"
-				type="datetime-local"
-				value={flightPlanStore.profile.departureTime}
-				oninput={(e) =>
-					flightPlanStore.updateProfile({ departureTime: (e.target as HTMLInputElement).value })}
-				class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
-			/>
 		</div>
 	</div>
 </div>

@@ -19,6 +19,7 @@
 	let feedbackMessage = $state('');
 	let feedbackWaypointId = $state<string | null>(null);
 	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+	let lastAutoFitRouteKey = '';
 
 	function createWaypointIcon(index: number) {
 		const markerSize = isTouchDevice ? 44 : 34;
@@ -70,6 +71,26 @@
 		if (!feedbackWaypointId) return;
 		flightPlanStore.removeWaypoint(feedbackWaypointId);
 		showFeedback(m.map_waypoint_removed());
+	}
+
+	function fitRoute() {
+		if (!map || flightPlanStore.waypoints.length === 0) return;
+		if (flightPlanStore.waypoints.length === 1) {
+			const waypoint = flightPlanStore.waypoints[0];
+			map.setView([waypoint.lat, waypoint.lng], 11, { animate: true });
+			return;
+		}
+		const bounds = L.latLngBounds(
+			flightPlanStore.waypoints.map((waypoint) => [waypoint.lat, waypoint.lng] as [number, number])
+		);
+		map.fitBounds(bounds, { padding: [56, 56], animate: true });
+	}
+
+	function handleWindowKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && isAddMode) {
+			isAddMode = false;
+			mapContainer?.focus();
+		}
 	}
 
 	function updateMarkerAccessibility(marker: L.Marker, waypoint: Waypoint, index: number) {
@@ -221,9 +242,15 @@
 		});
 
 		// If new route plotted and no charts loaded, fit map
-		if (allBounds.length > 0 && chartStore.loadedCharts.length === 0) {
+		const routeKey = flightPlanStore.waypoints.map((waypoint) => waypoint.id).join(':');
+		if (
+			allBounds.length > 0 &&
+			chartStore.loadedCharts.length === 0 &&
+			routeKey !== lastAutoFitRouteKey
+		) {
 			const combined = allBounds.reduce((acc, b) => acc.extend(b), allBounds[0]);
 			map.fitBounds(combined, { padding: [40, 40] });
+			lastAutoFitRouteKey = routeKey;
 		}
 	}
 
@@ -370,12 +397,17 @@
 	});
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown} />
+
 <div
 	class={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-800 shadow-lg ${isAddMode ? 'ring-2 ring-cyan-400/70' : ''}`}
 >
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex (Leaflet turns this container into an interactive map.) -->
 	<div
 		bind:this={mapContainer}
 		id="map"
+		role="application"
+		tabindex="0"
 		class:map-add-mode={isAddMode}
 		class="h-full w-full"
 		aria-label={m.map_aria_label()}
@@ -402,6 +434,18 @@
 				<Icon name="plus" class="h-4 w-4" />
 				<span>{m.map_add_waypoint()}</span>
 			</button>
+
+			{#if flightPlanStore.waypoints.length > 0}
+				<button
+					type="button"
+					onclick={fitRoute}
+					class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+					title={m.map_fit_route_help()}
+				>
+					<Icon name="scan" class="h-4 w-4 text-cyan-400" />
+					<span>{m.map_fit_route()}</span>
+				</button>
+			{/if}
 
 			<button
 				type="button"

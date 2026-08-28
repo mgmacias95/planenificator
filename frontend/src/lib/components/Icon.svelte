@@ -23,7 +23,14 @@
 		Loader2,
 		Globe,
 		Cloud,
-		Compass
+		Compass,
+		Route,
+		Layers3,
+		FolderOpen,
+		PanelLeftClose,
+		PanelLeftOpen,
+		Scan,
+		Gauge
 	} from '@lucide/svelte';
 
 	interface Props {
@@ -51,7 +58,14 @@
 			| 'check'
 			| 'globe'
 			| 'cloud'
-			| 'compass';
+			| 'compass'
+			| 'route'
+			| 'layers'
+			| 'folder-open'
+			| 'panel-close'
+			| 'panel-open'
+			| 'scan'
+			| 'gauge';
 		class?: string;
 		size?: number;
 	}
@@ -107,4 +121,18 @@
 	<Cloud class={className} {size} />
 {:else if name === 'compass'}
 	<Compass class={className} {size} />
+{:else if name === 'route'}
+	<Route class={className} {size} />
+{:else if name === 'layers'}
+	<Layers3 class={className} {size} />
+{:else if name === 'folder-open'}
+	<FolderOpen class={className} {size} />
+{:else if name === 'panel-close'}
+	<PanelLeftClose class={className} {size} />
+{:else if name === 'panel-open'}
+	<PanelLeftOpen class={className} {size} />
+{:else if name === 'scan'}
+	<Scan class={className} {size} />
+{:else if name === 'gauge'}
+	<Gauge class={className} {size} />
 {/if}

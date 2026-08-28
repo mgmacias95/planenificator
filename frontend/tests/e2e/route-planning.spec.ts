@@ -74,6 +74,31 @@ test.describe('iPad route planning', () => {
 		);
 		await expect(page.locator('.waypoint-name-label')).not.toContainText(/^WP\s*\d+$/);
 	});
+
+	test('collapses the full planner so the map can take focus', async ({ page }) => {
+		await page.goto('/');
+		const sidebar = page.locator('#planner-sidebar');
+		const mapEl = page.locator('#map');
+		const expandedMapBox = await mapEl.boundingBox();
+		expect(expandedMapBox).not.toBeNull();
+
+		await page.getByRole('button', { name: 'Hide planner' }).click();
+		await expect(page.getByRole('button', { name: 'Show planner' })).toBeVisible();
+		await expect(page.locator('#route-tab')).toBeHidden();
+		await page.waitForTimeout(250);
+
+		const collapsedSidebarBox = await sidebar.boundingBox();
+		const focusedMapBox = await mapEl.boundingBox();
+		expect(collapsedSidebarBox).not.toBeNull();
+		expect(focusedMapBox).not.toBeNull();
+		expect(collapsedSidebarBox!.height).toBeLessThanOrEqual(66);
+		expect(focusedMapBox!.height).toBeGreaterThan(expandedMapBox!.height + 250);
+
+		await mapEl.focus();
+		await expect(mapEl).toBeFocused();
+		await page.getByRole('button', { name: 'Show planner' }).click();
+		await expect(page.locator('#route-tab')).toBeVisible();
+	});
 });
 
 test.describe('iPad split view', () => {
