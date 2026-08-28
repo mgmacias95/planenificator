@@ -98,7 +98,7 @@
 	"calculate_disabled_hint": "Añade al menos 2 puntos para calcular.",
 	"calculation_error_title": "El cálculo de ruta necesita atención",
 	"calculation_error_message": "No se pudo calcular la ruta. Revisa los puntos y los datos del vuelo e inténtalo de nuevo.",
-	"technical_details": "Detalles técnicos",
+	"weather_unavailable_message": "No hay meteorología disponible para esa hora de salida. Elige una hora dentro del periodo de pronóstico e inténtalo de nuevo.",
 	"waypoints_empty_hint": "Elige Añadir punto y toca o haz clic en el mapa. Los aeródromos y lugares cercanos se nombran automáticamente.",
 	"segment_empty_hint": "No hay puntos en este tramo. Usa Añadir punto en el mapa.",
 	"planner_hide": "Ocultar planificador",
