@@ -7,13 +7,15 @@ test.describe('VFR Route Planning & Waypoint Management', () => {
 		await page.goto('/');
 
 		// Verify Title & HUD Header
-		await expect(page.locator('h1')).toContainText('PLANENIFICATOR');
+		await expect(page.getByRole('heading', { name: 'Planenificator', exact: true })).toBeVisible();
 
 		// Verify Map container exists
 		const mapEl = page.locator('#map');
 		await expect(mapEl).toBeVisible();
+		await mapEl.dblclick({ position: { x: 240, y: 180 } });
+		await mapEl.dblclick({ position: { x: 360, y: 240 } });
 
-		// Verify Default Segment 1 is displayed
+		// Verify the newly plotted route uses the default segment
 		await expect(page.getByText('Segment 1')).toBeVisible();
 
 		// Input Departure & Destination
@@ -26,7 +28,7 @@ test.describe('VFR Route Planning & Waypoint Management', () => {
 		await expect(destInput).toHaveValue('LEMD');
 
 		// Add New Segment
-		await page.getByRole('button', { name: '+ New Segment' }).click();
+		await page.getByRole('button', { name: 'New Segment' }).click();
 		await expect(page.getByText('Add New Route Segment')).toBeVisible();
 		await page.getByRole('button', { name: 'Save Altitude' }).click();
 
@@ -59,7 +61,8 @@ test.describe('iPad route planning', () => {
 		const addWaypointButton = page.getByRole('button', { name: 'Add waypoint' });
 		await expect(addWaypointButton).toHaveAttribute('aria-pressed', 'true');
 
-		await page.touchscreen.tap(mapBox!.x + mapBox!.width * 0.45, mapBox!.y + mapBox!.height * 0.45);
+		await page.touchscreen.tap(mapBox!.x + mapBox!.width * 0.5, mapBox!.y + mapBox!.height * 0.5);
 		await expect(page.locator('.custom-wp-marker')).toHaveCount(1);
+		await expect(page.locator('input[title="Click to rename waypoint"]')).toHaveValue('Madrid');
 	});
 });

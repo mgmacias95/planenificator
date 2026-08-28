@@ -85,7 +85,7 @@
 		<div
 			class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-center text-xs text-slate-400"
 		>
-			Double-click on the map or georeferenced chart to place waypoints.
+			{m.waypoints_empty_hint()}
 		</div>
 	{:else}
 		<div class="space-y-2.5">
@@ -105,10 +105,17 @@
 					<!-- Segment Header -->
 					<div
 						class="flex cursor-pointer items-center justify-between bg-slate-900 p-2.5 transition-colors hover:bg-slate-800/60"
-						onclick={() => isLastSegment ? flightPlanStore.setActiveSegment(sIdx) : flightPlanStore.toggleSegmentCollapse(sIdx)}
+						onclick={() =>
+							isLastSegment
+								? flightPlanStore.setActiveSegment(sIdx)
+								: flightPlanStore.toggleSegmentCollapse(sIdx)}
 						role="button"
 						tabindex="0"
-						onkeydown={(e) => e.key === 'Enter' && (isLastSegment ? flightPlanStore.setActiveSegment(sIdx) : flightPlanStore.toggleSegmentCollapse(sIdx))}
+						onkeydown={(e) =>
+							e.key === 'Enter' &&
+							(isLastSegment
+								? flightPlanStore.setActiveSegment(sIdx)
+								: flightPlanStore.toggleSegmentCollapse(sIdx))}
 					>
 						<div class="flex items-center gap-2">
 							<button
@@ -203,7 +210,7 @@
 
 							{#if seg.waypointIds.length === 0}
 								<p class="p-1 text-xs text-slate-500 italic">
-									No waypoints in segment. Double-click map to add.
+									{m.segment_empty_hint()}
 								</p>
 							{:else}
 								{#each seg.waypointIds as wpId, wIdx (wpId)}
@@ -231,8 +238,12 @@
 													value={wp.name}
 													oninput={(e) => handleWaypointNameChange(wp.id, e)}
 													readonly={!isLastSegment}
-													class="flex-1 truncate border-b border-transparent bg-transparent px-1 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-700 focus:border-cyan-400 focus:outline-hidden {!isLastSegment ? 'cursor-default opacity-60' : ''}"
-													title={isLastSegment ? 'Click to rename waypoint' : 'Cannot rename waypoint in a locked segment'}
+													class="flex-1 truncate border-b border-transparent bg-transparent px-1 py-0.5 text-xs font-medium text-slate-200 hover:border-slate-700 focus:border-cyan-400 focus:outline-hidden {!isLastSegment
+														? 'cursor-default opacity-60'
+														: ''}"
+													title={isLastSegment
+														? 'Click to rename waypoint'
+														: 'Cannot rename waypoint in a locked segment'}
 												/>
 											</div>
 

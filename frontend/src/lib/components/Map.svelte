@@ -256,10 +256,11 @@
 			doubleClickZoom: false
 		}).setView([40.4167, -3.7037], 6);
 
-		L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+		L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution:
-				'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a> | Airfields: <a href="https://ourairports.com/data/" target="_blank" rel="noreferrer">OurAirports</a> | Places: <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames (CC BY 4.0)</a>',
-			maxZoom: 18
+				'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> | Airfields: <a href="https://ourairports.com/data/" target="_blank" rel="noreferrer">OurAirports</a> | Places: <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames (CC BY 4.0)</a>',
+			className: 'base-map-tiles',
+			maxZoom: 19
 		}).addTo(map);
 
 		map.on('click', (e: L.LeafletMouseEvent) => {
@@ -373,6 +374,10 @@
 <style>
 	:global(.map-add-mode) {
 		cursor: crosshair;
+	}
+
+	:global(.base-map-tiles) {
+		filter: invert(1) hue-rotate(180deg) brightness(0.68) contrast(1.15) saturate(0.75);
 	}
 
 	:global(.leaflet-image-layer) {
