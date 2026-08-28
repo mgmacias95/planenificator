@@ -136,15 +136,15 @@
 	{/if}
 	<!-- HUD Header -->
 	<div
-		class="flex min-h-16 items-center justify-between gap-2 border-b border-slate-800 bg-slate-950 px-3 py-2"
+		class={`flex min-h-16 items-center gap-2 border-b border-slate-800 bg-slate-950 py-2 ${open ? 'justify-between px-3' : 'justify-center px-2'}`}
 	>
-		<div class="flex min-w-0 items-center gap-2.5">
-			<div
-				class="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-950/80 text-cyan-400"
-			>
-				<Icon name="plane" class="h-5 w-5" />
-			</div>
-			{#if open}
+		{#if open}
+			<div class="flex min-w-0 items-center gap-2.5">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-950/80 text-cyan-400"
+				>
+					<Icon name="plane" class="h-5 w-5" />
+				</div>
 				<div class="min-w-0">
 					<div class="flex items-center gap-2">
 						<h1 class="text-sm font-black tracking-wider text-cyan-400 uppercase">
@@ -185,8 +185,8 @@
 						>
 					</p>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 
 		<div class="flex items-center gap-2">
 			{#if open}
