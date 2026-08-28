@@ -76,5 +76,13 @@
 	"confirm_load_title": "Load Flight Plan?",
 	"confirm_load_message": "Loading \"{name}\" will replace your current route. Any unsaved changes will be lost.",
 	"btn_cancel": "Cancel",
-	"btn_confirm_load": "Load Plan"
+	"btn_confirm_load": "Load Plan",
+	"map_aria_label": "Interactive VFR route planning map",
+	"map_add_waypoint": "Add waypoint",
+	"map_add_waypoint_help": "Toggle single-tap waypoint placement",
+	"map_center": "Center",
+	"map_touch_add_hint": "Tap the map to add a waypoint · drag to pan · pinch to zoom",
+	"map_click_add_hint": "Click the map to add a waypoint",
+	"map_touch_pan_hint": "Drag to pan · pinch to zoom",
+	"map_desktop_hint": "Double-click the map to add a waypoint"
 }

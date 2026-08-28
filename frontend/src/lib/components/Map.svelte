@@ -4,6 +4,7 @@
 	import { chartStore } from '$lib/state/charts.svelte';
 	import { geocodingService } from '$lib/services/geocoding';
 	import type { Waypoint } from '$lib/types/flight';
+	import * as m from '$lib/paraglide/messages';
 	import Icon from './Icon.svelte';
 	import L from 'leaflet';
 
@@ -13,14 +14,21 @@
 	let waypointMarkers = new Map<string, L.Marker>();
 	let segmentPolylines: L.Polyline[] = [];
 	let chartLayers = new Map<string, L.Layer>();
+	let isAddMode = $state(false);
+	let isTouchDevice = $state(false);
 
 	function createWaypointIcon(index: number) {
+		const markerSize = isTouchDevice ? 34 : 26;
 		return L.divIcon({
 			className: 'custom-wp-marker',
-			html: `<div style="background: #06b6d4; color: #020617; font-weight: 800; font-size: 11px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.6);">${index + 1}</div>`,
-			iconSize: [22, 22],
-			iconAnchor: [11, 11]
+			html: `<div style="background: #06b6d4; color: #020617; font-weight: 800; font-size: ${isTouchDevice ? 14 : 12}px; width: ${markerSize}px; height: ${markerSize}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.7);">${index + 1}</div>`,
+			iconSize: [markerSize, markerSize],
+			iconAnchor: [markerSize / 2, markerSize / 2]
 		});
+	}
+
+	function addWaypoint(latlng: L.LatLng) {
+		flightPlanStore.addWaypoint(latlng.lat, latlng.lng);
 	}
 
 	async function resolveWaypointName(
@@ -235,6 +243,11 @@
 	});
 
 	onMount(() => {
+		isTouchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+		// On touchscreens the map opens ready for single-tap waypoint placement.
+		// Pilots can switch the mode off whenever they only want to inspect the chart.
+		isAddMode = isTouchDevice;
+
 		geocodingService.loadGazetteer().catch((e) => {
 			console.warn('Failed to pre-load gazetteer dataset:', e);
 		});
@@ -249,8 +262,16 @@
 			maxZoom: 18
 		}).addTo(map);
 
+		map.on('click', (e: L.LeafletMouseEvent) => {
+			if (isAddMode) {
+				addWaypoint(e.latlng);
+			}
+		});
+
 		map.on('dblclick', (e: L.LeafletMouseEvent) => {
-			flightPlanStore.addWaypoint(e.latlng.lat, e.latlng.lng);
+			if (!isAddMode) {
+				addWaypoint(e.latlng);
+			}
 		});
 
 		// Trigger size recalculation in case container layout is computing
@@ -283,15 +304,38 @@
 </script>
 
 <div
-	class="relative h-full min-h-[450px] w-full overflow-hidden rounded-xl border border-slate-800 shadow-xl"
+	class="relative h-full min-h-[280px] w-full overflow-hidden rounded-xl border border-slate-800 shadow-xl sm:min-h-[320px] lg:min-h-[450px]"
 >
-	<div bind:this={mapContainer} id="map" class="h-full w-full"></div>
+	<div
+		bind:this={mapContainer}
+		id="map"
+		class:map-add-mode={isAddMode}
+		class="h-full w-full"
+		aria-label={m.map_aria_label()}
+	></div>
 
 	<!-- Map Toolbar Overlay -->
 	<div class="absolute top-3 right-3 z-1000 flex flex-col gap-2">
 		<div
-			class="flex flex-col gap-1 rounded-lg border border-slate-700/80 bg-slate-900/90 p-1.5 text-xs shadow-lg backdrop-blur-xs"
+			class="flex flex-col gap-1.5 rounded-xl border border-slate-700/80 bg-slate-900/92 p-1.5 text-xs shadow-lg backdrop-blur-xs"
 		>
+			<button
+				type="button"
+				onclick={() => (isAddMode = !isAddMode)}
+				aria-pressed={isAddMode}
+				class="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors"
+				class:border-cyan-400={isAddMode}
+				class:bg-cyan-500={isAddMode}
+				class:text-slate-950={isAddMode}
+				class:border-slate-700={!isAddMode}
+				class:bg-slate-800={!isAddMode}
+				class:text-slate-200={!isAddMode}
+				title={m.map_add_waypoint_help()}
+			>
+				<Icon name="plus" class="h-4 w-4" />
+				<span>{m.map_add_waypoint()}</span>
+			</button>
+
 			<button
 				type="button"
 				onclick={() => {
@@ -299,17 +343,38 @@
 						map.setView([40.4167, -3.7037], 6);
 					}
 				}}
-				class="flex items-center gap-1 rounded-sm bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+				class="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
 				title="Reset map view to Spain VFR region"
 			>
-				<Icon name="map-pin" class="h-3 w-3 text-cyan-400" />
-				<span>Center</span>
+				<Icon name="map-pin" class="h-4 w-4 text-cyan-400" />
+				<span>{m.map_center()}</span>
 			</button>
 		</div>
+	</div>
+
+	<div
+		class={`pointer-events-none absolute bottom-6 left-1/2 z-1000 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full border px-4 py-2 text-center text-xs font-semibold shadow-lg backdrop-blur-md ${
+			isAddMode
+				? 'border-cyan-400/60 bg-cyan-950/90 text-cyan-100'
+				: 'border-slate-700/80 bg-slate-900/85 text-slate-200'
+		}`}
+		role="status"
+	>
+		{isAddMode
+			? isTouchDevice
+				? m.map_touch_add_hint()
+				: m.map_click_add_hint()
+			: isTouchDevice
+				? m.map_touch_pan_hint()
+				: m.map_desktop_hint()}
 	</div>
 </div>
 
 <style>
+	:global(.map-add-mode) {
+		cursor: crosshair;
+	}
+
 	:global(.leaflet-image-layer) {
 		image-rendering: -webkit-optimize-contrast;
 		image-rendering: auto;
