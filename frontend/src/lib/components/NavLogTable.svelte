@@ -6,6 +6,13 @@
 	function isTechnicalError(error: string) {
 		return error.includes('Traceback') || error.includes('File "') || error.includes('pyodide');
 	}
+
+	function userFacingError(error: string) {
+		if (error.includes('Weather forecast unavailable for the selected departure time')) {
+			return m.weather_unavailable_message();
+		}
+		return isTechnicalError(error) ? m.calculation_error_message() : error;
+	}
 </script>
 
 <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/90 shadow-lg">
@@ -47,20 +54,7 @@
 				<Icon name="alert-triangle" class="h-4 w-4 text-rose-400" />
 				<span>{m.calculation_error_title()}</span>
 			</div>
-			<p class="mt-1.5 leading-relaxed">
-				{isTechnicalError(calculationStore.error)
-					? m.calculation_error_message()
-					: calculationStore.error}
-			</p>
-			{#if isTechnicalError(calculationStore.error)}
-				<details class="mt-3 text-xs text-slate-400">
-					<summary class="cursor-pointer font-medium text-slate-300"
-						>{m.technical_details()}</summary
-					>
-					<pre
-						class="mt-2 max-h-36 overflow-auto rounded-lg bg-slate-950/80 p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap">{calculationStore.error}</pre>
-				</details>
-			{/if}
+			<p class="mt-1.5 leading-relaxed">{userFacingError(calculationStore.error)}</p>
 		</div>
 	{/if}
 

@@ -6,6 +6,7 @@ from planenificator.meteo import (
     fetch_meteo,
     Meteo,
     MeteoException,
+    _find_forecast_time_index,
 )
 
 
@@ -23,6 +24,18 @@ def test_get_pressure_altitude_850hpa():
   """Test altitude calculation for 850 hPa."""
   expected = (1 - (850 / 1013.25) ** 0.190284) * 145366.45
   assert get_pressure_altitude(850) == pytest.approx(expected)
+
+
+def test_find_forecast_time_uses_nearest_hour():
+  times = ['2026-07-19T20:00', '2026-07-19T21:00']
+  assert _find_forecast_time_index(times, '2026-07-19T20:20') == 0
+  assert _find_forecast_time_index(times, '2026-07-19T20:40') == 1
+
+
+def test_find_forecast_time_rejects_unavailable_date():
+  times = ['2026-07-19T20:00', '2026-07-19T21:00']
+  with pytest.raises(MeteoException, match='Weather forecast unavailable'):
+    _find_forecast_time_index(times, '2026-07-21T20:00')
 
 
 @mock.patch('planenificator.meteo.requests.get')

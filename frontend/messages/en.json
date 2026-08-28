@@ -98,7 +98,7 @@
 	"calculate_disabled_hint": "Add at least 2 waypoints to calculate.",
 	"calculation_error_title": "Route calculation needs attention",
 	"calculation_error_message": "The route could not be calculated. Check the waypoints and flight details, then try again.",
-	"technical_details": "Technical details",
+	"weather_unavailable_message": "Weather is unavailable for that departure time. Choose a time within the forecast window and try again.",
 	"waypoints_empty_hint": "Choose Add waypoint, then tap or click the map. Airfields and nearby places are named automatically.",
 	"segment_empty_hint": "No waypoints in this segment. Use Add waypoint on the map.",
 	"planner_hide": "Hide planner",
