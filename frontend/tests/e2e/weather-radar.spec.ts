@@ -47,7 +47,7 @@ test.describe('weather radar overlay', () => {
 		const panel = page.locator('#weather-overlay-panel');
 		await expect(panel).toBeVisible();
 		await expect(panel.getByRole('heading', { name: 'Precipitation radar' })).toBeVisible();
-		await expect(panel.getByText(/UTC$/)).toBeVisible();
+		await expect(panel.locator('[role="status"]').filter({ hasText: /UTC/ })).toBeVisible();
 		await expect(page.locator('.weather-radar-tiles')).not.toHaveCount(0);
 		await expect(panel.getByRole('link', { name: 'Weather data by RainViewer' })).toBeVisible();
 
@@ -63,10 +63,13 @@ test.describe('weather radar overlay', () => {
 			mapBounds!.y + mapBounds!.height
 		);
 
-		const playButton = panel.getByRole('button', { name: 'Play radar history' });
-		const playBounds = await playButton.boundingBox();
+		const playButton = panel.getByRole('button', { name: 'Play radar history', exact: true });
+		const replayButton = panel.getByRole('button', { name: 'Replay radar history', exact: true });
+		await expect(replayButton).toBeVisible();
+		const playBounds = await replayButton.boundingBox();
 		expect(playBounds?.height).toBeGreaterThanOrEqual(44);
 
+		await panel.locator('summary').click();
 		await panel.getByRole('slider', { name: 'Radar opacity' }).fill('40');
 		await expect
 			.poll(() =>
@@ -77,20 +80,21 @@ test.describe('weather radar overlay', () => {
 			.toBeCloseTo(0.4, 1);
 
 		const datePicker = panel.getByLabel('Observation date and time (UTC)');
-		const earliestDate = await datePicker.getAttribute('min');
-		expect(earliestDate).not.toBeNull();
-		await datePicker.fill(earliestDate!);
+		await datePicker.selectOption('0');
 		await expect
 			.poll(() => tileRequests.some((url) => url.includes('/v2/radar/earliest/512/')))
 			.toBe(true);
 
 		const timeSlider = panel.getByRole('slider', { name: 'Radar time' });
 		await expect(timeSlider).toHaveValue('0');
+		await expect(playButton).toBeVisible();
 		await playButton.click();
-		await expect(panel.getByRole('button', { name: 'Pause radar history' })).toBeVisible();
+		await expect(
+			panel.getByRole('button', { name: 'Pause radar history', exact: true })
+		).toBeVisible();
 		await expect(timeSlider).toHaveValue('0');
 		await expect.poll(() => timeSlider.inputValue(), { timeout: 3000 }).toBe('1');
-		await panel.getByRole('button', { name: 'Pause radar history' }).click();
+		await panel.getByRole('button', { name: 'Pause radar history', exact: true }).click();
 
 		await panel.getByRole('button', { name: 'Radar on' }).click();
 		await expect(page.locator('.weather-radar-tiles')).toHaveCount(0);
