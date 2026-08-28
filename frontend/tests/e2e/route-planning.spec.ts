@@ -79,6 +79,14 @@ test.describe('iPad route planning', () => {
 		await page.goto('/');
 		const sidebar = page.locator('#planner-sidebar');
 		const mapEl = page.locator('#map');
+		const initialSidebarBox = await sidebar.boundingBox();
+		expect(initialSidebarBox).not.toBeNull();
+		await page.locator('#planner-resize-handle').focus();
+		await page.keyboard.press('ArrowUp');
+		await page.waitForTimeout(250);
+		const resizedSidebarBox = await sidebar.boundingBox();
+		expect(resizedSidebarBox).not.toBeNull();
+		expect(resizedSidebarBox!.height).toBeLessThan(initialSidebarBox!.height);
 		const expandedMapBox = await mapEl.boundingBox();
 		expect(expandedMapBox).not.toBeNull();
 
