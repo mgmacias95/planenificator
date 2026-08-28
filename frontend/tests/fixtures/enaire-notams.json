@@ -1,0 +1,42 @@
+{
+	"features": [
+		{
+			"attributes": {
+				"OBJECTID": 101,
+				"notamId": "A1234/26",
+				"notamSerie": "A",
+				"notamNumber": 1234,
+				"notamYear": 2026,
+				"itemA": "LEBA",
+				"itemB": 1787654400000,
+				"itemC": 1787740800000,
+				"itemD": "DAILY 0800-1800",
+				"itemE": "RWY 05/23 CLSD DUE TO WIP",
+				"itemF": "SFC",
+				"itemG": "UNL",
+				"LOWER_VAL": 0,
+				"UPPER_VAL": 999,
+				"qcode": "QMRLC",
+				"areaSactaName": "CORDOBA"
+			}
+		},
+		{
+			"attributes": {
+				"OBJECTID": 102,
+				"notamId": "B5678/26",
+				"notamSerie": "B",
+				"notamNumber": 5678,
+				"notamYear": 2026,
+				"itemA": "LEMD",
+				"itemB": 1787654400000,
+				"itemC": 1787740800000,
+				"itemD": "DAILY 0000-2359",
+				"itemE": "MILITARY EXERCISE AIRSPACE RESTRICTION FL040-FL080",
+				"LOWER_VAL": 40,
+				"UPPER_VAL": 80,
+				"qcode": "QWMLW",
+				"areaSactaName": "MADRID CTA"
+			}
+		}
+	]
+}
