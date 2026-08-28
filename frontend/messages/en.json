@@ -137,7 +137,7 @@
 	"map_weather_wind": "Wind flow",
 	"map_weather_rain_short": "Rain",
 	"map_weather_wind_short": "Wind",
-	"map_weather_both": "Both",
+	"map_weather_no_layers": "Choose Rain or Wind",
 	"map_weather_wind_summary": "Animated wind field · hourly · next 8 days",
 	"map_weather_combined_summary": "Precipitation + animated wind · hourly · next 8 days",
 	"map_weather_wind_speed": "Mean {average} kt · peak {peak} kt",
