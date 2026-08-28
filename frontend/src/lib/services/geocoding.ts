@@ -7,6 +7,7 @@ import type {
 	SettlementRecord
 } from '$lib/types/geocoding';
 import { haversineDistanceKm, kmToNm, nmToKm } from '$lib/utils/geo';
+import { base } from '$app/paths';
 
 const GRID_CELL_SIZE_DEG = 0.25;
 const DEFAULT_AERODROME_RADIUS_NM = 2.0;
@@ -55,7 +56,7 @@ export class GeocodingService implements IGeocodingService {
 				data = customUrlOrData;
 			} else {
 				const url =
-					typeof customUrlOrData === 'string' ? customUrlOrData : '/data/gazetteer-es.json';
+					typeof customUrlOrData === 'string' ? customUrlOrData : `${base}/data/gazetteer-es.json`;
 				const response = await fetch(url);
 				if (!response.ok) {
 					throw new Error(`Failed to load gazetteer from ${url}: ${response.statusText}`);
