@@ -16,6 +16,7 @@
 		Printer,
 		Clipboard,
 		ChevronDown,
+		ChevronUp,
 		ChevronRight,
 		Plus,
 		X,
@@ -50,6 +51,7 @@
 			| 'printer'
 			| 'clipboard'
 			| 'chevron-down'
+			| 'chevron-up'
 			| 'chevron-right'
 			| 'plus'
 			| 'x'
@@ -105,6 +107,8 @@
 	<Clipboard class={className} {size} />
 {:else if name === 'chevron-down'}
 	<ChevronDown class={className} {size} />
+{:else if name === 'chevron-up'}
+	<ChevronUp class={className} {size} />
 {:else if name === 'chevron-right'}
 	<ChevronRight class={className} {size} />
 {:else if name === 'plus'}
