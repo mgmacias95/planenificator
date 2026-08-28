@@ -123,4 +123,3 @@ test.describe('iPad split view', () => {
 		expect(mapBox!.y + mapBox!.height).toBeLessThanOrEqual(834);
 	});
 });
-

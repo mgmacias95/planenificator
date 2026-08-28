@@ -12,10 +12,5 @@ test.describe('ENAIRE VFR Chart Overlays & Management', () => {
 		// Verify Catalog select and Dropzone are visible
 		await expect(page.locator('#catalog-select')).toBeVisible();
 		await expect(page.getByText('Choose chart files')).toBeVisible();
-		await page.getByRole('button', { name: 'Charts' }).click();
-
-		// Verify Catalog select and Dropzone are visible
-		await expect(page.locator('#catalog-select')).toBeVisible();
-		await expect(page.getByText('Drop ENAIRE VFR ZIP')).toBeVisible();
 	});
 });

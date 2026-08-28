@@ -86,11 +86,6 @@ describe('Chart Georeferencer & World File Parser', () => {
 		'should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present',
 		async () => {
 			const buf = readFileSync(realChartFixture).buffer;
-	it('should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present', async () => {
-		const fs = await import('node:fs');
-		const zipPath = '/home/wocat/2026_LE5_CENTROSUR.zip';
-		if (fs.existsSync(zipPath)) {
-			const buf = fs.readFileSync(zipPath).buffer;
 			const { tiffBuffer, tfwText, filename } = await georef.unpackZipChart(buf);
 			expect(tiffBuffer.byteLength).toBeGreaterThan(0);
 			expect(filename).toBe('2026_LE5_CENTROSUR');

@@ -25,14 +25,5 @@ test.describe('Flight Calculation & Safety Briefing', () => {
 		// Results and safety information stay out of the map workspace until a calculation exists.
 		await expect(page.locator('#nav-log-table')).not.toBeAttached();
 		await expect(page.locator('#results-resize-handle')).not.toBeAttached();
-		// Verify NavLog table placeholder is present
-		await expect(page.locator('#nav-log-table')).toBeVisible();
-		await expect(page.getByText('No route calculated yet')).toBeVisible();
-
-		// Safety tab checks
-		await page.getByRole('button', { name: 'Safety' }).click();
-		await expect(
-			page.getByText('Calculate a route to perform semicircular rule safety checks')
-		).toBeVisible();
 	});
 });

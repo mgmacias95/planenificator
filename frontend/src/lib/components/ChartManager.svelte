@@ -81,10 +81,8 @@
 
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
-		<h3
-			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-300 uppercase"
-		>
-			<Icon name="map-pin" class="h-3.5 w-3.5 text-cyan-400" />
+		<h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+			<Icon name="layers" class="h-4 w-4 text-cyan-400" />
 			<span>{m.charts_title()}</span>
 		</h3>
 		<span class="font-mono text-[11px] text-slate-400">
@@ -94,12 +92,15 @@
 
 	<!-- Online Catalog Selector -->
 	{#if chartStore.errorMessage}
-		<div class="rounded-lg border border-rose-800 bg-rose-950/60 p-2.5 text-xs text-rose-300">
+		<div
+			class="rounded-xl border border-rose-800 bg-rose-950/60 p-3 text-sm text-rose-200"
+			role="alert"
+		>
 			{chartStore.errorMessage}
 		</div>
 	{/if}
 
-	<div class="space-y-1.5 rounded-lg border border-slate-800 bg-slate-900 p-3">
+	<div class="space-y-2 rounded-xl border border-slate-700/80 bg-slate-950/70 p-3.5 shadow-xs">
 		<label for="catalog-select" class="block text-[11px] font-medium text-slate-400">
 			{m.charts_catalog_label()}
 		</label>
@@ -133,7 +134,7 @@
 
 	<!-- Dropzone for local files -->
 	<div
-		class="cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-colors"
+		class="cursor-pointer rounded-xl border-2 border-dashed p-5 text-center transition-colors"
 		class:border-cyan-500={isDragging}
 		class:bg-cyan-950={isDragging}
 		class:border-slate-700={!isDragging}
@@ -153,7 +154,10 @@
 		onclick={() => fileInput?.click()}
 		role="button"
 		tabindex="0"
-		onkeydown={(e) => e.key === 'Enter' && fileInput?.click()}
+		aria-label={m.charts_choose_files()}
+		aria-describedby="chart-file-hint"
+		aria-busy={chartStore.isLoadingChart}
+		onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInput?.click()}
 	>
 		<input
 			bind:this={fileInput}
@@ -168,12 +172,15 @@
 				}
 			}}
 		/>
-		<div class="mb-1 flex justify-center text-cyan-400">
-			<Icon name="plus" class="h-5 w-5" />
+		<div
+			class="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-cyan-950 text-cyan-300"
+		>
+			<Icon name={chartStore.isLoadingChart ? 'loader' : 'plus'} class="h-5 w-5" />
 		</div>
-		<div class="text-xs font-medium text-slate-300">{m.charts_dropzone()}</div>
-		<div class="mt-0.5 text-[10px] text-slate-500">
-			Supports automatic Lambert Conformal Conic georeferencing
+		<div class="text-sm font-semibold text-slate-100">{m.charts_choose_files()}</div>
+		<div class="mt-1 text-xs text-slate-400">{m.charts_dropzone()}</div>
+		<div id="chart-file-hint" class="mt-1 text-[11px] leading-relaxed text-slate-500">
+			{m.charts_choose_hint()}
 		</div>
 	</div>
 
