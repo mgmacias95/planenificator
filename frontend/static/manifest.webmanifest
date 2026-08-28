@@ -1,0 +1,24 @@
+{
+	"name": "Planenificator VFR Flight Planner",
+	"short_name": "Planenificator",
+	"description": "Touch-friendly VFR route planning and operational briefing",
+	"start_url": ".",
+	"scope": ".",
+	"display": "standalone",
+	"orientation": "any",
+	"background_color": "#020617",
+	"theme_color": "#020617",
+	"icons": [
+		{
+			"src": "icons/app-icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "icons/app-icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	]
+}

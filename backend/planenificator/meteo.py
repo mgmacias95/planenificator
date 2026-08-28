@@ -24,6 +24,41 @@ class Meteo:
   wind_direction: float
 
 
+def _parse_forecast_time(value: str) -> datetime:
+  """Parses an Open-Meteo timestamp and normalizes it to UTC."""
+  parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+  if parsed.tzinfo is None:
+    parsed = parsed.replace(tzinfo=timezone.utc)
+  return parsed.astimezone(timezone.utc)
+
+
+def _find_forecast_time_index(available_times: list[str], requested_time: str) -> int:
+  """Returns the exact or nearest hourly forecast within 90 minutes."""
+  if not available_times:
+    raise MeteoException('No hourly weather forecast is available')
+
+  try:
+    return available_times.index(requested_time)
+  except ValueError:
+    try:
+      requested = _parse_forecast_time(requested_time)
+      parsed_times = [_parse_forecast_time(value) for value in available_times]
+    except ValueError as exc:
+      raise MeteoException('The weather service returned an invalid forecast time') from exc
+
+  index = min(
+      range(len(parsed_times)),
+      key=lambda candidate: abs((parsed_times[candidate] - requested).total_seconds()),
+  )
+  difference_seconds = abs((parsed_times[index] - requested).total_seconds())
+  if difference_seconds > 90 * 60:
+    raise MeteoException(
+        'Weather forecast unavailable for the selected departure time. '
+        'Choose a time within the available forecast window.'
+    )
+  return index
+
+
 def get_pressure_altitude(pressure, qnh=1013.25):
   """Uses the std atmosphere model to convert pressure in hPa to altitude in ft.
 
@@ -91,9 +126,9 @@ def fetch_meteo(
 
   # the response from this API contains an array with all hours, and then subsequent arrays
   # for the values of the requested variables, for each hour. In order to retrieve the
-  # correct values, first we need to know the indes of the requested hour.
+  # correct values, first we need to know the index of the requested hour.
   response_json = response.json()
-  index = response_json['hourly']['time'].index(time)
+  index = _find_forecast_time_index(response_json['hourly']['time'], time)
 
   # compute the pressure altitude of all the pressure levels to select the
   # closest to the target altitude.

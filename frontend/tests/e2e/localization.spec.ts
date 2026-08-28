@@ -5,8 +5,8 @@ test.describe('Multi-Language Localization Switching', () => {
 		await page.goto('/');
 
 		// Verify initial English strings
-		await expect(page.getByRole('button', { name: 'Route' })).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Charts' })).toBeVisible();
+		await expect(page.getByRole('tab', { name: 'Route' })).toBeVisible();
+		await expect(page.getByRole('tab', { name: 'Charts' })).toBeVisible();
 
 		// Click Language Toggle
 		const langBtn = page.locator('button[title*="Language"]');
@@ -14,7 +14,7 @@ test.describe('Multi-Language Localization Switching', () => {
 		await langBtn.click();
 
 		// Verify Spanish strings update
-		await expect(page.getByRole('button', { name: 'Ruta' })).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Cartas' })).toBeVisible();
+		await expect(page.getByRole('tab', { name: 'Ruta' })).toBeVisible();
+		await expect(page.getByRole('tab', { name: 'Cartas' })).toBeVisible();
 	});
 });

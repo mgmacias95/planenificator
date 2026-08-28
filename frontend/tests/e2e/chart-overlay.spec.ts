@@ -7,6 +7,11 @@ test.describe('ENAIRE VFR Chart Overlays & Management', () => {
 		await page.goto('/');
 
 		// Switch to Charts Tab
+		await page.getByRole('tab', { name: 'Charts' }).click();
+
+		// Verify Catalog select and Dropzone are visible
+		await expect(page.locator('#catalog-select')).toBeVisible();
+		await expect(page.getByText('Choose chart files')).toBeVisible();
 		await page.getByRole('button', { name: 'Charts' }).click();
 
 		// Verify Catalog select and Dropzone are visible

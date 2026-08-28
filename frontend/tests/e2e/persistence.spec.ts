@@ -5,7 +5,7 @@ test.describe('Flight Plan Persistence & Project Management', () => {
 		await page.goto('/');
 
 		// Switch to Plans tab
-		await page.getByRole('button', { name: 'Plans' }).click();
+		await page.getByRole('tab', { name: 'Plans' }).click();
 
 		await expect(page.locator('#plan-name-input')).toBeVisible();
 		await expect(page.getByText('Create New Plan')).toBeVisible();

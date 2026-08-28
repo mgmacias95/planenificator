@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
 import { ChartGeoreferencer } from '$lib/services/georef';
+
+const realChartFixture = '/home/wocat/2026_LE5_CENTROSUR.zip';
 
 describe('Chart Georeferencer & World File Parser', () => {
 	const georef = new ChartGeoreferencer();
@@ -79,6 +82,10 @@ describe('Chart Georeferencer & World File Parser', () => {
 		expect(store.loadedCharts.length).toBe(0);
 	});
 
+	it.runIf(existsSync(realChartFixture))(
+		'should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present',
+		async () => {
+			const buf = readFileSync(realChartFixture).buffer;
 	it('should successfully unpack real 2026_LE5_CENTROSUR.zip chart if present', async () => {
 		const fs = await import('node:fs');
 		const zipPath = '/home/wocat/2026_LE5_CENTROSUR.zip';
@@ -93,5 +100,5 @@ describe('Chart Georeferencer & World File Parser', () => {
 			expect(metrics.pixelScaleX).toBeCloseTo(42.33, 1);
 			expect(metrics.pixelScaleY).toBeCloseTo(-42.33, 1);
 		}
-	});
+	);
 });
