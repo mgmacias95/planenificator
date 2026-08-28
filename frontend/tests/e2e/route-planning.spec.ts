@@ -12,8 +12,9 @@ test.describe('VFR Route Planning & Waypoint Management', () => {
 		// Verify Map container exists
 		const mapEl = page.locator('#map');
 		await expect(mapEl).toBeVisible();
-		await mapEl.dblclick({ position: { x: 240, y: 180 } });
-		await mapEl.dblclick({ position: { x: 360, y: 240 } });
+		await page.getByRole('button', { name: 'Add waypoint' }).click();
+		await mapEl.click({ position: { x: 240, y: 180 } });
+		await mapEl.click({ position: { x: 360, y: 240 } });
 
 		// Verify the newly plotted route uses the default segment
 		await expect(page.getByText('Segment 1')).toBeVisible();
@@ -59,6 +60,8 @@ test.describe('iPad route planning', () => {
 		expect(mapBox!.height).toBeGreaterThanOrEqual(280);
 
 		const addWaypointButton = page.getByRole('button', { name: 'Add waypoint' });
+		await expect(addWaypointButton).toHaveAttribute('aria-pressed', 'false');
+		await addWaypointButton.click();
 		await expect(addWaypointButton).toHaveAttribute('aria-pressed', 'true');
 
 		await page.touchscreen.tap(mapBox!.x + mapBox!.width * 0.5, mapBox!.y + mapBox!.height * 0.5);
@@ -66,5 +69,24 @@ test.describe('iPad route planning', () => {
 		await expect(page.locator('input[title="Click to rename waypoint"]')).toHaveValue(
 			'ES-0003 - Banco de España Helipad'
 		);
+		await expect(page.locator('.waypoint-name-label')).toContainText(
+			'ES-0003 - Banco de España Helipad'
+		);
+		await expect(page.locator('.waypoint-name-label')).not.toContainText(/^WP\s*\d+$/);
+	});
+});
+
+test.describe('iPad split view', () => {
+	test.use({ viewport: { width: 744, height: 834 }, hasTouch: true });
+
+	test('keeps the planner, map, and controls from overlapping', async ({ page }) => {
+		await page.goto('/');
+		const sidebarBox = await page.locator('aside').boundingBox();
+		const mapBox = await page.locator('#map').boundingBox();
+		expect(sidebarBox).not.toBeNull();
+		expect(mapBox).not.toBeNull();
+		expect(mapBox!.y).toBeGreaterThanOrEqual(sidebarBox!.y + sidebarBox!.height);
+		expect(mapBox!.height).toBeGreaterThan(280);
+		expect(mapBox!.y + mapBox!.height).toBeLessThanOrEqual(834);
 	});
 });

@@ -12,7 +12,19 @@
 	import * as m from '$lib/paraglide/messages';
 
 	type TabType = 'route' | 'charts' | 'saved';
+	const tabs: TabType[] = ['route', 'charts', 'saved'];
 	let activeTab = $state<TabType>('route');
+
+	function handleTabKey(event: KeyboardEvent) {
+		if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+		event.preventDefault();
+		const currentIndex = tabs.indexOf(activeTab);
+		if (event.key === 'Home') activeTab = tabs[0];
+		else if (event.key === 'End') activeTab = tabs[tabs.length - 1];
+		else if (event.key === 'ArrowRight') activeTab = tabs[(currentIndex + 1) % tabs.length];
+		else activeTab = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+		requestAnimationFrame(() => document.getElementById(`${activeTab}-tab`)?.focus());
+	}
 
 	function handlePrint() {
 		window.print();
@@ -20,7 +32,7 @@
 </script>
 
 <aside
-	class="flex h-[42dvh] w-full shrink-0 flex-col border-b border-slate-800 bg-slate-900 shadow-2xl select-none lg:h-full lg:w-96 lg:border-r lg:border-b-0 xl:w-[420px]"
+	class="flex h-[42dvh] w-full shrink-0 flex-col border-b border-slate-800 bg-slate-900 shadow-lg lg:h-full lg:w-96 lg:border-r lg:border-b-0 xl:w-[420px]"
 >
 	<!-- HUD Header -->
 	<div class="flex items-center justify-between border-b border-slate-800 bg-slate-950 p-3 sm:p-4">
@@ -38,6 +50,8 @@
 					<!-- Demoted Engine Status Indicator Dot -->
 					<div
 						class="flex cursor-help items-center gap-1"
+						role="status"
+						aria-live="polite"
 						title={pyodideService.status.state === 'ready'
 							? 'Engine Ready'
 							: `Flight Engine: ${pyodideService.status.progressMessage}`}
@@ -54,6 +68,7 @@
 							class:bg-rose-500={pyodideService.status.state === 'error'}
 							class:bg-slate-600={pyodideService.status.state === 'uninitialized'}
 						></span>
+						<span class="sr-only">{pyodideService.status.progressMessage}</span>
 					</div>
 				</div>
 				<p class="font-mono text-[10px] tracking-wide text-slate-400">
@@ -66,7 +81,7 @@
 			<button
 				type="button"
 				onclick={handlePrint}
-				disabled={!calculationStore.hasCalculated}
+				disabled={!calculationStore.hasCalculated || calculationStore.isStale}
 				class="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 shadow-xs transition-colors hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 				title="Print or Export PDF Briefing"
 			>
@@ -79,9 +94,19 @@
 	</div>
 
 	<!-- Navigation Tab Bar -->
-	<div class="flex border-b border-slate-800 bg-slate-950 text-xs font-medium">
+	<div
+		class="flex border-b border-slate-800 bg-slate-950 text-xs font-medium"
+		role="tablist"
+		aria-label="Planner sections"
+	>
 		<button
+			id="route-tab"
 			type="button"
+			role="tab"
+			aria-selected={activeTab === 'route'}
+			aria-controls="planner-panel"
+			tabindex={activeTab === 'route' ? 0 : -1}
+			onkeydown={handleTabKey}
 			onclick={() => (activeTab = 'route')}
 			class="relative min-h-11 flex-1 border-b-2 py-2.5 text-center transition-colors"
 			class:border-cyan-400={activeTab === 'route'}
@@ -98,7 +123,13 @@
 		</button>
 
 		<button
+			id="charts-tab"
 			type="button"
+			role="tab"
+			aria-selected={activeTab === 'charts'}
+			aria-controls="planner-panel"
+			tabindex={activeTab === 'charts' ? 0 : -1}
+			onkeydown={handleTabKey}
 			onclick={() => (activeTab = 'charts')}
 			class="min-h-11 flex-1 border-b-2 py-2.5 text-center transition-colors"
 			class:border-cyan-400={activeTab === 'charts'}
@@ -111,7 +142,13 @@
 		</button>
 
 		<button
+			id="saved-tab"
 			type="button"
+			role="tab"
+			aria-selected={activeTab === 'saved'}
+			aria-controls="planner-panel"
+			tabindex={activeTab === 'saved' ? 0 : -1}
+			onkeydown={handleTabKey}
 			onclick={() => (activeTab = 'saved')}
 			class="min-h-11 flex-1 border-b-2 py-2.5 text-center transition-colors"
 			class:border-cyan-400={activeTab === 'saved'}
@@ -125,7 +162,12 @@
 	</div>
 
 	<!-- Tab Content Area -->
-	<div class="flex-1 space-y-5 overflow-y-auto p-3 sm:p-4">
+	<div
+		id="planner-panel"
+		class="flex-1 space-y-5 overflow-y-auto p-3 sm:p-4"
+		role="tabpanel"
+		aria-labelledby={`${activeTab}-tab`}
+	>
 		{#if activeTab === 'route'}
 			<!-- Step 1 (Aircraft Profile & Performance) & Step 2 (Aerodromes & Timing) -->
 			<FlightProfileForm />
@@ -149,6 +191,15 @@
 	<!-- Sticky Docked Action Bar for Route calculation -->
 	{#if activeTab === 'route'}
 		<div class="border-t border-slate-800 bg-slate-950/95 p-2 backdrop-blur-xs sm:p-3">
+			{#if calculationStore.isStale}
+				<div
+					class="mb-2 rounded-lg border border-amber-500/40 bg-amber-950/60 px-3 py-2 text-xs font-semibold text-amber-200"
+					role="status"
+					aria-live="polite"
+				>
+					{m.route_stale()}
+				</div>
+			{/if}
 			<button
 				id="calculate-btn"
 				type="button"
@@ -161,9 +212,12 @@
 					<span>{m.btn_calculating()}</span>
 				{:else}
 					<Icon name="zap" class="h-4 w-4 text-slate-950" />
-					<span>{m.btn_calculate()}</span>
+					<span>{calculationStore.isStale ? m.btn_recalculate() : m.btn_calculate()}</span>
 				{/if}
 			</button>
+			{#if flightPlanStore.waypoints.length < 2}
+				<p class="mt-1.5 text-center text-xs text-slate-400">{m.calculate_disabled_hint()}</p>
+			{/if}
 		</div>
 	{/if}
 </aside>

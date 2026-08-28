@@ -13,6 +13,13 @@ export class CalculationState {
 	error = $state<string | null>(null);
 	warnings = $state<string[]>([]);
 	hasCalculated = $state<boolean>(false);
+	calculatedFingerprint = $state<string | null>(null);
+
+	get isStale(): boolean {
+		return (
+			this.hasCalculated && this.calculatedFingerprint !== flightPlanStore.calculationFingerprint()
+		);
+	}
 
 	async calculate(): Promise<boolean> {
 		if (flightPlanStore.waypoints.length < 2) {
@@ -40,6 +47,7 @@ export class CalculationState {
 			this.totalDistanceNm = result.totalDistanceNm;
 			this.totalFlightTimeMinutes = result.totalFlightTimeMinutes;
 			this.warnings = result.warnings;
+			this.calculatedFingerprint = flightPlanStore.calculationFingerprint();
 			this.hasCalculated = true;
 
 			return true;
@@ -62,6 +70,7 @@ export class CalculationState {
 		this.error = null;
 		this.warnings = [];
 		this.hasCalculated = false;
+		this.calculatedFingerprint = null;
 		this.statusMessage = '';
 	}
 }

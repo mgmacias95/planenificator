@@ -7,6 +7,7 @@
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
 	import { aircraftProfilesStore } from '$lib/state/aircraft-profiles.svelte';
+	import { calculationStore } from '$lib/state/calculation.svelte';
 	import { pyodideService } from '$lib/services/pyodide.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -37,10 +38,12 @@
 			<Map />
 		</div>
 
-		<!-- Bottom Navigation Log Panel -->
-		<div class="h-44 shrink-0 overflow-y-auto sm:h-48 lg:h-64">
-			<NavLogTable />
-		</div>
+		{#if calculationStore.hasCalculated || calculationStore.error}
+			<!-- Results stay out of the way until a calculation exists. -->
+			<div class="max-h-[clamp(11rem,26dvh,16rem)] shrink-0 overflow-y-auto">
+				<NavLogTable />
+			</div>
+		{/if}
 	</main>
 </div>
 

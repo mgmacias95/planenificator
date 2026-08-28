@@ -16,19 +16,70 @@
 	let chartLayers = new Map<string, L.Layer>();
 	let isAddMode = $state(false);
 	let isTouchDevice = $state(false);
+	let feedbackMessage = $state('');
+	let feedbackWaypointId = $state<string | null>(null);
+	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function createWaypointIcon(index: number) {
-		const markerSize = isTouchDevice ? 34 : 26;
+		const markerSize = isTouchDevice ? 44 : 34;
+		const dotSize = isTouchDevice ? 32 : 26;
 		return L.divIcon({
 			className: 'custom-wp-marker',
-			html: `<div style="background: #06b6d4; color: #020617; font-weight: 800; font-size: ${isTouchDevice ? 14 : 12}px; width: ${markerSize}px; height: ${markerSize}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.7);">${index + 1}</div>`,
+			html: `<div style="width:${markerSize}px;height:${markerSize}px;display:flex;align-items:center;justify-content:center;"><div style="background:#06b6d4;color:#020617;font-weight:800;font-size:${isTouchDevice ? 14 : 12}px;width:${dotSize}px;height:${dotSize}px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.7);">${index + 1}</div></div>`,
 			iconSize: [markerSize, markerSize],
 			iconAnchor: [markerSize / 2, markerSize / 2]
 		});
 	}
 
+	function showFeedback(message: string, waypointId: string | null = null) {
+		feedbackMessage = message;
+		feedbackWaypointId = waypointId;
+		if (feedbackTimer) clearTimeout(feedbackTimer);
+		feedbackTimer = setTimeout(() => {
+			feedbackMessage = '';
+			feedbackWaypointId = null;
+		}, 5000);
+	}
+
+	function escapeHtml(value: string) {
+		return value.replace(
+			/[&<>'"]/g,
+			(character) =>
+				({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character] ??
+				character
+		);
+	}
+
+	function waypointPopup(name: string, index: number) {
+		return `<strong>${escapeHtml(name)}</strong><br><span class="waypoint-popup-meta">Waypoint ${index + 1}</span>`;
+	}
+
+	function waypointDisplayName(waypoint: Waypoint) {
+		return /^WP\s+\d+$/i.test(waypoint.name) ? m.map_finding_place() : waypoint.name;
+	}
+
 	function addWaypoint(latlng: L.LatLng) {
-		flightPlanStore.addWaypoint(latlng.lat, latlng.lng);
+		const waypoint = flightPlanStore.addWaypoint(latlng.lat, latlng.lng);
+		showFeedback(
+			m.map_waypoint_finding({ number: String(flightPlanStore.waypoints.length) }),
+			waypoint.id
+		);
+	}
+
+	function undoLastWaypoint() {
+		if (!feedbackWaypointId) return;
+		flightPlanStore.removeWaypoint(feedbackWaypointId);
+		showFeedback(m.map_waypoint_removed());
+	}
+
+	function updateMarkerAccessibility(marker: L.Marker, waypoint: Waypoint, index: number) {
+		const label = `${m.map_waypoint_label({ number: String(index + 1), name: waypointDisplayName(waypoint) })}, ${waypoint.lat.toFixed(3)}, ${waypoint.lng.toFixed(3)}`;
+		marker.options.title = label;
+		const element = marker.getElement();
+		if (element) {
+			element.setAttribute('aria-label', label);
+			element.setAttribute('title', label);
+		}
 	}
 
 	async function resolveWaypointName(
@@ -38,22 +89,30 @@
 		targetLng?: number
 	) {
 		if (wp.isManualName) return;
+		const lat = targetLat !== undefined ? targetLat : wp.lat;
+		const lng = targetLng !== undefined ? targetLng : wp.lng;
 
 		try {
 			if (!geocodingService.isReady()) {
 				await geocodingService.loadGazetteer();
 			}
-			const lat = targetLat !== undefined ? targetLat : wp.lat;
-			const lng = targetLng !== undefined ? targetLng : wp.lng;
 			const resolvedName = geocodingService.reverseGeocode(lat, lng);
 
 			const currentWp = flightPlanStore.waypoints.find((w) => w.id === wp.id);
 			if (currentWp && !currentWp.isManualName) {
 				flightPlanStore.updateWaypoint(wp.id, { name: resolvedName });
-				marker.setPopupContent(`<b>WP:</b> ${resolvedName}`);
+				marker.setTooltipContent(escapeHtml(resolvedName));
+				showFeedback(m.map_waypoint_named({ name: resolvedName }), wp.id);
 			}
 		} catch (e) {
 			console.warn('Offline geocoding error:', e);
+			const fallbackName = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+			const currentWp = flightPlanStore.waypoints.find((waypoint) => waypoint.id === wp.id);
+			if (currentWp && !currentWp.isManualName) {
+				flightPlanStore.updateWaypoint(wp.id, { name: fallbackName });
+				marker.setTooltipContent(escapeHtml(fallbackName));
+			}
+			showFeedback(m.map_waypoint_name_failed(), wp.id);
 		}
 	}
 
@@ -81,31 +140,45 @@
 				marker = L.marker([wp.lat, wp.lng], {
 					draggable: isEditable,
 					title: wp.name,
+					alt: m.map_waypoint_label({ number: String(idx + 1), name: wp.name }),
+					keyboard: true,
+					autoPanOnFocus: true,
 					icon: createWaypointIcon(idx)
 				}).addTo(map!);
 
-				marker.bindPopup(`<b>WP ${idx + 1}:</b> ${wp.name}`);
+				marker.bindTooltip(escapeHtml(waypointDisplayName(wp)), {
+					permanent: true,
+					direction: 'right',
+					offset: L.point(isTouchDevice ? 20 : 16, 0),
+					className: 'waypoint-name-label'
+				});
+				marker.bindPopup(waypointPopup(waypointDisplayName(wp), idx));
 
 				marker.on('dragend', () => {
 					const newLatLng = marker!.getLatLng();
 					const currentWp = flightPlanStore.waypoints.find((w) => w.id === wp.id);
+					marker!.setTooltipContent(escapeHtml(m.map_finding_place()));
 					flightPlanStore.updateWaypoint(wp.id, {
 						lat: newLatLng.lat,
 						lng: newLatLng.lng
 					});
+					showFeedback(m.map_waypoint_moved());
 					if (currentWp && !currentWp.isManualName) {
 						resolveWaypointName(currentWp, marker!, newLatLng.lat, newLatLng.lng);
 					}
 				});
 
 				waypointMarkers.set(wp.id, marker);
+				updateMarkerAccessibility(marker, wp, idx);
 				if (!wp.isManualName) {
 					resolveWaypointName(wp, marker);
 				}
 			} else {
 				marker.setLatLng([wp.lat, wp.lng]);
 				marker.setIcon(createWaypointIcon(idx));
-				marker.setPopupContent(`<b>WP ${idx + 1}:</b> ${wp.name}`);
+				marker.setTooltipContent(escapeHtml(waypointDisplayName(wp)));
+				marker.setPopupContent(waypointPopup(waypointDisplayName(wp), idx));
+				updateMarkerAccessibility(marker, wp, idx);
 				// Update draggability based on current segment membership
 				if (isEditable) {
 					marker.dragging?.enable();
@@ -244,16 +317,14 @@
 
 	onMount(() => {
 		isTouchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
-		// On touchscreens the map opens ready for single-tap waypoint placement.
-		// Pilots can switch the mode off whenever they only want to inspect the chart.
-		isAddMode = isTouchDevice;
 
 		geocodingService.loadGazetteer().catch((e) => {
 			console.warn('Failed to pre-load gazetteer dataset:', e);
+			showFeedback(m.map_waypoint_name_failed());
 		});
 
 		map = L.map(mapContainer, {
-			doubleClickZoom: false
+			doubleClickZoom: true
 		}).setView([40.4167, -3.7037], 6);
 
 		L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -265,12 +336,6 @@
 
 		map.on('click', (e: L.LeafletMouseEvent) => {
 			if (isAddMode) {
-				addWaypoint(e.latlng);
-			}
-		});
-
-		map.on('dblclick', (e: L.LeafletMouseEvent) => {
-			if (!isAddMode) {
 				addWaypoint(e.latlng);
 			}
 		});
@@ -293,6 +358,7 @@
 	});
 
 	onDestroy(() => {
+		if (feedbackTimer) clearTimeout(feedbackTimer);
 		if (resizeObserver) {
 			resizeObserver.disconnect();
 			resizeObserver = null;
@@ -305,7 +371,7 @@
 </script>
 
 <div
-	class="relative h-full min-h-[280px] w-full overflow-hidden rounded-xl border border-slate-800 shadow-xl sm:min-h-[320px] lg:min-h-[450px]"
+	class={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-slate-800 shadow-lg ${isAddMode ? 'ring-2 ring-cyan-400/70' : ''}`}
 >
 	<div
 		bind:this={mapContainer}
@@ -353,22 +419,41 @@
 		</div>
 	</div>
 
-	<div
-		class={`pointer-events-none absolute bottom-6 left-1/2 z-1000 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full border px-4 py-2 text-center text-xs font-semibold shadow-lg backdrop-blur-md ${
-			isAddMode
-				? 'border-cyan-400/60 bg-cyan-950/90 text-cyan-100'
-				: 'border-slate-700/80 bg-slate-900/85 text-slate-200'
-		}`}
-		role="status"
-	>
-		{isAddMode
-			? isTouchDevice
-				? m.map_touch_add_hint()
-				: m.map_click_add_hint()
-			: isTouchDevice
-				? m.map_touch_pan_hint()
-				: m.map_desktop_hint()}
-	</div>
+	{#if feedbackMessage}
+		<div
+			class="absolute bottom-8 left-1/2 z-1000 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-slate-600/80 bg-slate-950/94 px-4 py-2 text-sm font-semibold text-slate-100 shadow-lg backdrop-blur-md"
+			role="status"
+			aria-live="polite"
+		>
+			<span>{feedbackMessage}</span>
+			{#if feedbackWaypointId}
+				<button
+					type="button"
+					onclick={undoLastWaypoint}
+					class="min-h-9 rounded-md px-2 font-bold text-cyan-300 hover:bg-slate-800 hover:text-cyan-200"
+				>
+					{m.btn_undo()}
+				</button>
+			{/if}
+		</div>
+	{:else if flightPlanStore.waypoints.length === 0}
+		<div
+			class={`pointer-events-none absolute bottom-8 left-1/2 z-1000 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full border px-4 py-2 text-center text-xs font-semibold shadow-lg backdrop-blur-md ${
+				isAddMode
+					? 'border-cyan-400/60 bg-cyan-950/90 text-cyan-100'
+					: 'border-slate-700/80 bg-slate-900/90 text-slate-200'
+			}`}
+			role="status"
+		>
+			{isAddMode
+				? isTouchDevice
+					? m.map_touch_add_hint()
+					: m.map_click_add_hint()
+				: isTouchDevice
+					? m.map_touch_pan_hint()
+					: m.map_desktop_hint()}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -378,6 +463,31 @@
 
 	:global(.base-map-tiles) {
 		filter: invert(1) hue-rotate(180deg) brightness(0.68) contrast(1.15) saturate(0.75);
+	}
+
+	:global(.waypoint-name-label) {
+		max-width: 220px;
+		overflow: hidden;
+		border: 1px solid rgb(255 255 255 / 0.24) !important;
+		border-radius: 7px !important;
+		background: rgb(2 6 23 / 0.92) !important;
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.5) !important;
+		color: #ecfeff !important;
+		font-size: 12px !important;
+		font-weight: 600 !important;
+		line-height: 1.2 !important;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		pointer-events: none;
+	}
+
+	:global(.waypoint-name-label::before) {
+		border-right-color: rgb(255 255 255 / 0.24) !important;
+	}
+
+	:global(.waypoint-popup-meta) {
+		color: #94a3b8;
+		font-size: 11px;
 	}
 
 	:global(.leaflet-image-layer) {
