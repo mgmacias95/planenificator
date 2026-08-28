@@ -50,7 +50,70 @@
 		</div>
 	{/if}
 
-	<div class="overflow-x-auto">
+	{#if calculationStore.navLog.length > 0}
+		<div class="grid gap-2 p-2 sm:grid-cols-2 lg:hidden" aria-label={m.navlog_summary()}>
+			{#each calculationStore.navLog as leg (leg.legIndex)}
+				<article class="rounded-xl border border-slate-700/80 bg-slate-950/75 p-3 shadow-xs">
+					<div class="mb-3 flex items-start justify-between gap-3 border-b border-slate-800 pb-2">
+						<div class="min-w-0">
+							<div class="text-[11px] font-semibold tracking-wide text-cyan-400 uppercase">
+								{m.navlog_leg()}
+								{leg.legIndex}
+							</div>
+							<div class="truncate text-sm font-semibold text-slate-100">{leg.fromName}</div>
+						</div>
+						{#if leg.notes}
+							<span
+								class="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-semibold text-slate-300"
+							>
+								{leg.notes === 'Top of Climb'
+									? 'TOC'
+									: leg.notes === 'Top of Descent'
+										? 'TOD'
+										: leg.notes}
+							</span>
+						{/if}
+					</div>
+					<dl class="grid grid-cols-4 gap-x-3 gap-y-2 font-mono">
+						<div>
+							<dt class="text-[10px] text-slate-500">{m.navlog_tc()}</dt>
+							<dd class="text-xs font-semibold text-slate-100">{Math.round(leg.trueCourseDeg)}°</dd>
+						</div>
+						<div>
+							<dt class="text-[10px] text-slate-500">{m.navlog_th()}</dt>
+							<dd class="text-xs font-semibold text-slate-100">
+								{Math.round(leg.trueHeadingDeg)}°
+							</dd>
+						</div>
+						<div>
+							<dt class="text-[10px] text-slate-500">{m.navlog_alt()}</dt>
+							<dd class="text-xs font-semibold text-slate-100">{leg.altitudeFt}</dd>
+						</div>
+						<div>
+							<dt class="text-[10px] text-slate-500">{m.navlog_gs()}</dt>
+							<dd class="text-xs font-semibold text-slate-100">{leg.groundSpeedKt} kt</dd>
+						</div>
+						<div class="col-span-2">
+							<dt class="text-[10px] text-slate-500">{m.navlog_wind()}</dt>
+							<dd class="text-xs text-slate-200">
+								{Math.round(leg.windDirDeg)}° / {Math.round(leg.windSpeedKt)} kt
+							</dd>
+						</div>
+						<div>
+							<dt class="text-[10px] text-slate-500">{m.navlog_dist()}</dt>
+							<dd class="text-xs text-slate-200">{leg.distanceNm.toFixed(1)}</dd>
+						</div>
+						<div>
+							<dt class="text-[10px] text-slate-500">{m.navlog_ete()}</dt>
+							<dd class="text-xs text-slate-200">{leg.eteMinutes.toFixed(1)} m</dd>
+						</div>
+					</dl>
+				</article>
+			{/each}
+		</div>
+	{/if}
+
+	<div class="hidden overflow-x-auto lg:block">
 		<table id="nav-log-table" class="w-full border-collapse font-mono text-xs">
 			<caption class="sr-only">{m.navlog_title()}</caption>
 			<thead>

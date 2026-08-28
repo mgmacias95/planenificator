@@ -28,11 +28,16 @@
 <div
 	class="app-shell no-print flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 lg:flex-row"
 >
+	<a href="#main-workspace" class="skip-link">{m.skip_to_content()}</a>
 	<!-- Sidebar HUD Drawer -->
 	<Sidebar />
 
 	<!-- Main Viewport Area -->
-	<main class="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:gap-3 sm:p-3">
+	<main
+		id="main-workspace"
+		tabindex="-1"
+		class="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:gap-3 sm:p-3"
+	>
 		<!-- Map Container -->
 		<div class="relative min-h-0 w-full flex-1">
 			<Map />
