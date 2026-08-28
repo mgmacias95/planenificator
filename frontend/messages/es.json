@@ -84,5 +84,7 @@
 	"map_touch_add_hint": "Toca el mapa para añadir un punto · arrastra para mover · pellizca para ampliar",
 	"map_click_add_hint": "Haz clic en el mapa para añadir un punto",
 	"map_touch_pan_hint": "Arrastra para mover · pellizca para ampliar",
-	"map_desktop_hint": "Haz doble clic en el mapa para añadir un punto"
+	"map_desktop_hint": "Haz doble clic en el mapa para añadir un punto",
+	"waypoints_empty_hint": "Elige Añadir punto y toca o haz clic en el mapa. Los aeródromos y lugares cercanos se nombran automáticamente.",
+	"segment_empty_hint": "No hay puntos en este tramo. Usa Añadir punto en el mapa."
 }
