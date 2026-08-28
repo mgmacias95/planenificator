@@ -5,13 +5,28 @@ export interface ForecastBounds {
 	east: number;
 }
 
+export const WIND_LEVELS = ['surface', '925hPa', '850hPa', '700hPa', '500hPa'] as const;
+export type WindLevel = (typeof WIND_LEVELS)[number];
+
+export interface WindSeries {
+	speed: number[];
+	direction: number[];
+}
+
+const WIND_VARIABLES: Record<WindLevel, { speed: string; direction: string }> = {
+	surface: { speed: 'wind_speed_10m', direction: 'wind_direction_10m' },
+	'925hPa': { speed: 'wind_speed_925hPa', direction: 'wind_direction_925hPa' },
+	'850hPa': { speed: 'wind_speed_850hPa', direction: 'wind_direction_850hPa' },
+	'700hPa': { speed: 'wind_speed_700hPa', direction: 'wind_direction_700hPa' },
+	'500hPa': { speed: 'wind_speed_500hPa', direction: 'wind_direction_500hPa' }
+};
+
 export interface ForecastPoint {
 	latitude: number;
 	longitude: number;
 	precipitation: number[];
 	precipitationProbability: number[];
-	windSpeed: number[];
-	windDirection: number[];
+	winds: Record<WindLevel, WindSeries>;
 }
 
 export interface WeatherForecast {
@@ -31,13 +46,7 @@ const inFlightRequests = new Map<string, Promise<WeatherForecast>>();
 interface OpenMeteoLocation {
 	latitude?: unknown;
 	longitude?: unknown;
-	hourly?: {
-		time?: unknown;
-		precipitation?: unknown;
-		precipitation_probability?: unknown;
-		wind_speed_10m?: unknown;
-		wind_direction_10m?: unknown;
-	};
+	hourly?: Record<string, unknown>;
 }
 
 function finiteNumbers(value: unknown): number[] | null {
@@ -83,7 +92,14 @@ export function buildForecastUrl(bounds: ForecastBounds) {
 	url.search = new URLSearchParams({
 		latitude: points.map((point) => point.latitude.toFixed(3)).join(','),
 		longitude: points.map((point) => point.longitude.toFixed(3)).join(','),
-		hourly: 'precipitation,precipitation_probability,wind_speed_10m,wind_direction_10m',
+		hourly: [
+			'precipitation',
+			'precipitation_probability',
+			...WIND_LEVELS.flatMap((level) => [
+				WIND_VARIABLES[level].speed,
+				WIND_VARIABLES[level].direction
+			])
+		].join(','),
 		wind_speed_unit: 'kn',
 		timezone: 'UTC',
 		timeformat: 'unixtime',
@@ -107,23 +123,36 @@ export function parseWeatherForecast(
 		const locationTimes = finiteNumbers(location?.hourly?.time);
 		const precipitation = finiteNumbers(location?.hourly?.precipitation);
 		const probability = finiteNumbers(location?.hourly?.precipitation_probability);
-		const windSpeed = finiteNumbers(location?.hourly?.wind_speed_10m);
-		const windDirection = finiteNumbers(location?.hourly?.wind_direction_10m);
+		const winds = Object.fromEntries(
+			WIND_LEVELS.map((level) => {
+				const variables = WIND_VARIABLES[level];
+				return [
+					level,
+					{
+						speed: finiteNumbers(location?.hourly?.[variables.speed]),
+						direction: finiteNumbers(location?.hourly?.[variables.direction])
+					}
+				];
+			})
+		) as Record<WindLevel, { speed: number[] | null; direction: number[] | null }>;
 		const latitude = Number(location?.latitude);
 		const longitude = Number(location?.longitude);
 		if (
 			!locationTimes ||
 			!precipitation ||
 			!probability ||
-			!windSpeed ||
-			!windDirection ||
 			!Number.isFinite(latitude) ||
 			!Number.isFinite(longitude) ||
 			locationTimes.length === 0 ||
 			precipitation.length !== locationTimes.length ||
 			probability.length !== locationTimes.length ||
-			windSpeed.length !== locationTimes.length ||
-			windDirection.length !== locationTimes.length
+			WIND_LEVELS.some(
+				(level) =>
+					!winds[level].speed ||
+					!winds[level].direction ||
+					winds[level].speed.length !== locationTimes.length ||
+					winds[level].direction.length !== locationTimes.length
+			)
 		) {
 			continue;
 		}
@@ -139,8 +168,7 @@ export function parseWeatherForecast(
 			longitude,
 			precipitation,
 			precipitationProbability: probability,
-			windSpeed,
-			windDirection
+			winds: winds as Record<WindLevel, WindSeries>
 		});
 	}
 

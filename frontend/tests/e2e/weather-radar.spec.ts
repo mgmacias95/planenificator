@@ -43,6 +43,20 @@ function forecastFixture(requestUrl: string) {
 			wind_speed_10m: times.map((_, frameIndex) => 8 + frameIndex + pointIndex / 5),
 			wind_direction_10m: times.map(
 				(_, frameIndex) => (210 + pointIndex * 4 + frameIndex * 3) % 360
+			),
+			...Object.fromEntries(
+				['925hPa', '850hPa', '700hPa', '500hPa'].flatMap((level, levelIndex) => [
+					[
+						`wind_speed_${level}`,
+						times.map((_, frameIndex) => 18 + levelIndex * 10 + frameIndex + pointIndex / 5)
+					],
+					[
+						`wind_direction_${level}`,
+						times.map(
+							(_, frameIndex) => (240 + levelIndex * 15 + pointIndex * 4 + frameIndex * 3) % 360
+						)
+					]
+				])
 			)
 		}
 	}));
@@ -79,7 +93,7 @@ test.describe('weather radar overlay', () => {
 		await expect(panel.getByText(/Peak 4\.2 mm\/h/)).toBeVisible();
 
 		await panel.getByRole('button', { name: 'Wind flow', exact: true }).click();
-		await expect(panel.getByText('Animated surface wind · hourly · next 8 days')).toBeVisible();
+		await expect(panel.getByText('Animated wind field · hourly · next 8 days')).toBeVisible();
 		await expect(panel.getByText(/Mean 14 kt · peak 16 kt/)).toBeVisible();
 		await expect(page.locator('.weather-forecast-field')).toHaveCount(0);
 		const windCanvas = page.locator('[data-weather-layer="wind-flow"]');
@@ -92,6 +106,19 @@ test.describe('weather radar overlay', () => {
 			canvas.toDataURL()
 		);
 		expect(secondWindFrame).not.toBe(firstWindFrame);
+		await panel.getByLabel('Wind altitude').selectOption('850hPa');
+		await expect(panel.getByText(/Mean 34 kt · peak 36 kt/)).toBeVisible();
+		await expect(
+			panel.getByRole('paragraph').filter({ hasText: '~5,000 ft MSL · 850 hPa' })
+		).toBeVisible();
+		await expect(panel.getByText('Pressure-level altitude is approximate')).toBeVisible();
+
+		await panel.getByRole('button', { name: 'Both', exact: true }).click();
+		await expect(
+			panel.getByText('Precipitation + animated wind · hourly · next 8 days')
+		).toBeVisible();
+		await expect(page.locator('.weather-forecast-field')).toHaveCount(1);
+		await expect(windCanvas).toBeVisible();
 
 		const timeSlider = panel.getByRole('slider', { name: 'Forecast time' });
 		const frameBeforePlay = Number(await timeSlider.inputValue());

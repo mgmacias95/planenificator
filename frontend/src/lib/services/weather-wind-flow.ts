@@ -1,4 +1,4 @@
-import type { WeatherForecast } from './weather-forecast';
+import type { WeatherForecast, WindLevel } from './weather-forecast';
 
 export interface ScreenPoint {
 	x: number;
@@ -55,6 +55,7 @@ export class WindFlowAnimator {
 	update(
 		forecast: WeatherForecast,
 		frameIndex: number,
+		windLevel: WindLevel,
 		project: (latitude: number, longitude: number) => ScreenPoint,
 		width: number,
 		height: number,
@@ -68,7 +69,10 @@ export class WindFlowAnimator {
 
 		const samples = forecast.points.map<WindSample>((point) => ({
 			...project(point.latitude, point.longitude),
-			...windComponents(point.windSpeed[frameIndex] ?? 0, point.windDirection[frameIndex] ?? 0)
+			...windComponents(
+				point.winds[windLevel].speed[frameIndex] ?? 0,
+				point.winds[windLevel].direction[frameIndex] ?? 0
+			)
 		}));
 		this.buildField(samples);
 		this.seedParticles();
