@@ -31,7 +31,9 @@
 		PanelLeftClose,
 		PanelLeftOpen,
 		Scan,
-		Gauge
+		Gauge,
+		Play,
+		Pause
 	} from '@lucide/svelte';
 
 	interface Props {
@@ -67,7 +69,9 @@
 			| 'panel-close'
 			| 'panel-open'
 			| 'scan'
-			| 'gauge';
+			| 'gauge'
+			| 'play'
+			| 'pause';
 		class?: string;
 		size?: number;
 	}
@@ -139,4 +143,8 @@
 	<Scan class={className} {size} />
 {:else if name === 'gauge'}
 	<Gauge class={className} {size} />
+{:else if name === 'play'}
+	<Play class={className} {size} />
+{:else if name === 'pause'}
+	<Pause class={className} {size} />
 {/if}

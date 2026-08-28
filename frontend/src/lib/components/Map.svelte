@@ -3,6 +3,12 @@
 	import { flightPlanStore, SEGMENT_COLORS } from '$lib/state/flight-plan.svelte';
 	import { chartStore } from '$lib/state/charts.svelte';
 	import { geocodingService } from '$lib/services/geocoding';
+	import {
+		fetchRadarTimeline,
+		radarTileUrl,
+		type RadarFrame,
+		type RadarTimeline
+	} from '$lib/services/weather-radar';
 	import type { Waypoint } from '$lib/types/flight';
 	import * as m from '$lib/paraglide/messages';
 	import Icon from './Icon.svelte';
@@ -19,7 +25,28 @@
 	let feedbackMessage = $state('');
 	let feedbackWaypointId = $state<string | null>(null);
 	let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+	let radarAnimationTimer: ReturnType<typeof setInterval> | null = null;
+	let radarRefreshTimer: ReturnType<typeof setInterval> | null = null;
+	let radarLayer: L.TileLayer | null = null;
 	let lastAutoFitRouteKey = '';
+	let weatherPanelOpen = $state(false);
+	let weatherEnabled = $state(false);
+	let weatherLoading = $state(false);
+	let weatherError = $state(false);
+	let weatherPlaying = $state(false);
+	let weatherOpacity = $state(58);
+	let radarTimeline = $state<RadarTimeline | null>(null);
+	let radarFrames = $state<RadarFrame[]>([]);
+	let radarFrameIndex = $state(0);
+	let selectedRadarFrame = $derived(radarFrames[radarFrameIndex] ?? null);
+	let radarShowingHistory = $derived(
+		radarFrames.length > 0 && radarFrameIndex < radarFrames.length - 1
+	);
+	let radarIsDelayed = $derived(
+		radarFrames.length > 0
+			? Date.now() / 1000 - radarFrames[radarFrames.length - 1].time > 15 * 60
+			: false
+	);
 
 	function createWaypointIcon(index: number) {
 		const markerSize = isTouchDevice ? 44 : 34;
@@ -91,6 +118,140 @@
 			isAddMode = false;
 			mapContainer?.focus();
 		}
+		if (event.key === 'Escape' && weatherPanelOpen) {
+			weatherPanelOpen = false;
+			mapContainer?.focus();
+		}
+	}
+
+	function formatRadarTime(timestamp: number) {
+		return `${new Intl.DateTimeFormat(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: 'UTC'
+		}).format(new Date(timestamp * 1000))} UTC`;
+	}
+
+	function stopRadarAnimation() {
+		if (radarAnimationTimer) {
+			clearInterval(radarAnimationTimer);
+			radarAnimationTimer = null;
+		}
+		weatherPlaying = false;
+	}
+
+	function updateRadarLayer() {
+		if (!map || !weatherEnabled || !radarTimeline || !selectedRadarFrame) return;
+		const url = radarTileUrl(radarTimeline, selectedRadarFrame);
+		if (radarLayer) {
+			radarLayer.setUrl(url, false);
+			radarLayer.setOpacity(weatherOpacity / 100);
+			return;
+		}
+
+		radarLayer = L.tileLayer(url, {
+			attribution:
+				'<a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">Weather data by RainViewer</a>',
+			className: 'weather-radar-tiles',
+			pane: 'weatherPane',
+			opacity: weatherOpacity / 100,
+			tileSize: 512,
+			zoomOffset: -1,
+			maxNativeZoom: 8,
+			maxZoom: 19,
+			keepBuffer: 0,
+			updateWhenIdle: true,
+			updateWhenZooming: false
+		}).addTo(map);
+	}
+
+	function removeRadarLayer() {
+		if (map && radarLayer) map.removeLayer(radarLayer);
+		radarLayer = null;
+	}
+
+	async function loadRadar(forceRefresh = false) {
+		if (weatherLoading) return;
+		const hadRadar = radarTimeline !== null && radarFrames.length > 0;
+		const wasAtLatest = hadRadar && radarFrameIndex === radarFrames.length - 1;
+		const selectedTime = selectedRadarFrame?.time;
+		weatherLoading = true;
+		weatherError = false;
+		try {
+			const timeline = await fetchRadarTimeline(fetch, forceRefresh);
+			radarTimeline = timeline;
+			radarFrames = timeline.frames;
+			const preservedIndex = selectedTime
+				? timeline.frames.findIndex((frame) => frame.time === selectedTime)
+				: -1;
+			radarFrameIndex =
+				!hadRadar || wasAtLatest || preservedIndex < 0
+					? Math.max(0, timeline.frames.length - 1)
+					: preservedIndex;
+			weatherEnabled = true;
+			updateRadarLayer();
+		} catch (error) {
+			console.warn('Weather radar unavailable:', error);
+			if (!hadRadar) {
+				weatherError = true;
+				weatherEnabled = false;
+				removeRadarLayer();
+			}
+		} finally {
+			weatherLoading = false;
+		}
+	}
+
+	function setWeatherEnabled(enabled: boolean) {
+		weatherEnabled = enabled;
+		if (!enabled) {
+			stopRadarAnimation();
+			removeRadarLayer();
+			return;
+		}
+		if (radarFrames.length === 0) {
+			void loadRadar();
+		} else {
+			radarFrameIndex = radarFrames.length - 1;
+			updateRadarLayer();
+		}
+	}
+
+	function openWeatherPanel() {
+		weatherPanelOpen = !weatherPanelOpen;
+		if (weatherPanelOpen && !weatherEnabled) setWeatherEnabled(true);
+	}
+
+	function selectRadarFrame(index: number) {
+		stopRadarAnimation();
+		radarFrameIndex = Math.max(0, Math.min(index, radarFrames.length - 1));
+		updateRadarLayer();
+	}
+
+	function jumpToLatestRadar() {
+		selectRadarFrame(radarFrames.length - 1);
+	}
+
+	function toggleRadarAnimation() {
+		if (weatherPlaying) {
+			stopRadarAnimation();
+			return;
+		}
+		if (radarFrames.length < 2) return;
+		weatherPlaying = true;
+		const firstRecentFrame = Math.max(0, radarFrames.length - 4);
+		if (radarFrameIndex < firstRecentFrame) radarFrameIndex = firstRecentFrame;
+		radarAnimationTimer = setInterval(() => {
+			radarFrameIndex =
+				radarFrameIndex >= radarFrames.length - 1 ? firstRecentFrame : radarFrameIndex + 1;
+			updateRadarLayer();
+		}, 1300);
+	}
+
+	function updateRadarOpacity(value: number) {
+		weatherOpacity = value;
+		radarLayer?.setOpacity(value / 100);
 	}
 
 	function updateMarkerAccessibility(marker: L.Marker, waypoint: Waypoint, index: number) {
@@ -233,7 +394,9 @@
 					color,
 					weight: 4,
 					opacity: 0.9,
-					smoothFactor: 1
+					smoothFactor: 1,
+					pane: 'routePane',
+					className: 'route-line'
 				}).addTo(map!);
 
 				segmentPolylines.push(polyline);
@@ -353,6 +516,10 @@
 		map = L.map(mapContainer, {
 			doubleClickZoom: true
 		}).setView([40.4167, -3.7037], 6);
+		map.createPane('weatherPane').style.zIndex = '425';
+		map.getPane('weatherPane')!.style.pointerEvents = 'none';
+		map.createPane('routePane').style.zIndex = '450';
+		map.getPane('routePane')!.style.pointerEvents = 'none';
 
 		L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution:
@@ -382,10 +549,19 @@
 		updateMarkers();
 		updatePolylines();
 		updateChartOverlays();
+
+		radarRefreshTimer = setInterval(
+			() => {
+				if (weatherEnabled && document.visibilityState === 'visible') void loadRadar(true);
+			},
+			5 * 60 * 1000
+		);
 	});
 
 	onDestroy(() => {
 		if (feedbackTimer) clearTimeout(feedbackTimer);
+		stopRadarAnimation();
+		if (radarRefreshTimer) clearInterval(radarRefreshTimer);
 		if (resizeObserver) {
 			resizeObserver.disconnect();
 			resizeObserver = null;
@@ -414,9 +590,11 @@
 	></div>
 
 	<!-- Map Toolbar Overlay -->
-	<div class="absolute top-3 right-3 z-1000 flex flex-col gap-2">
+	<div
+		class="pointer-events-none absolute top-3 right-3 bottom-3 z-1000 flex min-h-0 flex-col items-end gap-2 sm:flex-row sm:items-start"
+	>
 		<div
-			class="flex flex-col gap-1.5 rounded-xl border border-slate-700/80 bg-slate-900/92 p-1.5 text-xs shadow-lg backdrop-blur-xs"
+			class="pointer-events-auto flex flex-col gap-1.5 rounded-xl border border-slate-700/80 bg-slate-900/92 p-1.5 text-xs shadow-lg backdrop-blur-xs sm:order-2"
 		>
 			<button
 				type="button"
@@ -433,6 +611,25 @@
 			>
 				<Icon name="plus" class="h-4 w-4" />
 				<span>{m.map_add_waypoint()}</span>
+			</button>
+
+			<button
+				type="button"
+				onclick={openWeatherPanel}
+				aria-expanded={weatherPanelOpen}
+				aria-controls="weather-overlay-panel"
+				class={`relative flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+					weatherEnabled
+						? 'border-cyan-500/70 bg-cyan-950/80 text-cyan-100'
+						: 'border-transparent bg-slate-800 text-slate-300'
+				}`}
+				title={m.map_weather_help()}
+			>
+				<Icon name="cloud" class="h-4 w-4 text-cyan-400" />
+				<span>{m.map_weather()}</span>
+				{#if weatherEnabled}
+					<span class="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-cyan-300"></span>
+				{/if}
 			</button>
 
 			{#if flightPlanStore.waypoints.length > 0}
@@ -461,6 +658,173 @@
 				<span>{m.map_center()}</span>
 			</button>
 		</div>
+
+		{#if weatherPanelOpen}
+			<section
+				id="weather-overlay-panel"
+				class="pointer-events-auto min-h-0 w-[min(19.5rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl border border-slate-700/80 bg-slate-950/94 p-4 text-slate-100 shadow-2xl backdrop-blur-xl sm:order-1"
+				aria-label={m.map_weather_title()}
+			>
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0">
+						<div class="flex flex-wrap items-center gap-2">
+							<h2 class="text-sm font-bold">{m.map_weather_title()}</h2>
+							{#if selectedRadarFrame}
+								<span
+									class={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
+										radarShowingHistory
+											? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200'
+											: radarIsDelayed
+												? 'border-amber-400/40 bg-amber-400/10 text-amber-200'
+												: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200'
+									}`}
+								>
+									{radarShowingHistory
+										? m.map_weather_history_badge()
+										: radarIsDelayed
+											? m.map_weather_delayed()
+											: m.map_weather_recent()}
+								</span>
+							{/if}
+						</div>
+						<p class="mt-1 text-[11px] text-slate-400">{m.map_weather_history()}</p>
+					</div>
+					<div class="flex shrink-0 items-center gap-1">
+						<button
+							type="button"
+							onclick={() => setWeatherEnabled(!weatherEnabled)}
+							aria-pressed={weatherEnabled}
+							aria-label={weatherEnabled ? m.map_weather_on() : m.map_weather_off()}
+							class="relative min-h-11 min-w-11 rounded-full"
+						>
+							<span
+								class="mx-auto block h-6 w-10 rounded-full border transition-colors"
+								class:border-cyan-400={weatherEnabled}
+								class:bg-cyan-500={weatherEnabled}
+								class:border-slate-600={!weatherEnabled}
+								class:bg-slate-800={!weatherEnabled}
+							>
+								<span
+									class="mt-0.5 block h-5 w-5 rounded-full bg-white shadow-sm transition-transform"
+									class:translate-x-[17px]={weatherEnabled}
+									class:translate-x-0={!weatherEnabled}
+								></span>
+							</span>
+						</button>
+						<button
+							type="button"
+							onclick={() => (weatherPanelOpen = false)}
+							aria-label={m.map_weather_close()}
+							class="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
+						>
+							<Icon name="x" class="h-4 w-4" />
+						</button>
+					</div>
+				</div>
+
+				{#if weatherLoading}
+					<div
+						class="mt-4 flex min-h-20 items-center justify-center gap-2 text-sm text-slate-300"
+						role="status"
+					>
+						<Icon name="loader" class="h-4 w-4 text-cyan-400" />
+						<span>{m.map_weather_loading()}</span>
+					</div>
+				{:else if weatherError}
+					<div class="mt-4 rounded-xl border border-amber-500/30 bg-amber-950/30 p-3" role="alert">
+						<p class="text-sm text-amber-100">{m.map_weather_error()}</p>
+						<button
+							type="button"
+							onclick={() => loadRadar(true)}
+							class="mt-2 min-h-11 rounded-lg bg-amber-400 px-3 text-xs font-bold text-slate-950 hover:bg-amber-300"
+						>
+							{m.map_weather_retry()}
+						</button>
+					</div>
+				{:else if selectedRadarFrame}
+					<div class="mt-4 flex items-center gap-3">
+						<button
+							type="button"
+							onclick={toggleRadarAnimation}
+							disabled={!weatherEnabled || radarFrames.length < 2}
+							aria-label={weatherPlaying ? m.map_weather_pause() : m.map_weather_play()}
+							class="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/40 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+						>
+							<Icon name={weatherPlaying ? 'pause' : 'play'} class="h-4 w-4" />
+						</button>
+						<div class="min-w-0 flex-1">
+							<div class="flex items-baseline justify-between gap-2">
+								<p
+									class="font-mono text-base font-bold text-white"
+									role="status"
+									aria-live="polite"
+								>
+									{formatRadarTime(selectedRadarFrame.time)}
+								</p>
+								<button
+									type="button"
+									onclick={jumpToLatestRadar}
+									disabled={radarFrameIndex === radarFrames.length - 1}
+									class="min-h-8 rounded-md px-2 text-[11px] font-bold text-cyan-300 hover:bg-slate-800 disabled:text-slate-600"
+								>
+									{m.map_weather_latest()}
+								</button>
+							</div>
+							<input
+								type="range"
+								min="0"
+								max={Math.max(0, radarFrames.length - 1)}
+								step="1"
+								value={radarFrameIndex}
+								disabled={!weatherEnabled}
+								oninput={(event) => {
+									stopRadarAnimation();
+									radarFrameIndex = Number(event.currentTarget.value);
+								}}
+								onchange={() => updateRadarLayer()}
+								aria-label={m.map_weather_time()}
+								aria-valuetext={formatRadarTime(selectedRadarFrame.time)}
+								class="mt-2 h-7 w-full cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+							/>
+						</div>
+					</div>
+
+					<div class="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+						<div
+							class="flex items-center justify-between gap-3 text-[11px] font-semibold text-slate-300"
+						>
+							<label for="weather-opacity">{m.map_weather_opacity()}</label>
+							<span class="font-mono text-slate-400">{weatherOpacity}%</span>
+						</div>
+						<input
+							id="weather-opacity"
+							type="range"
+							min="30"
+							max="85"
+							step="5"
+							value={weatherOpacity}
+							disabled={!weatherEnabled}
+							oninput={(event) => updateRadarOpacity(Number(event.currentTarget.value))}
+							class="mt-1 h-7 w-full cursor-pointer accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+						/>
+						<div class="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+							<span>{m.map_weather_light()}</span>
+							<span class="weather-legend h-1.5 flex-1 rounded-full"></span>
+							<span>{m.map_weather_heavy()}</span>
+						</div>
+					</div>
+				{/if}
+
+				<a
+					href="https://www.rainviewer.com/"
+					target="_blank"
+					rel="noreferrer"
+					class="mt-3 inline-block text-[10px] text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-slate-300"
+				>
+					{m.map_weather_source()}
+				</a>
+			</section>
+		{/if}
 	</div>
 
 	{#if feedbackMessage}
@@ -537,5 +901,30 @@
 	:global(.leaflet-image-layer) {
 		image-rendering: -webkit-optimize-contrast;
 		image-rendering: auto;
+	}
+
+	:global(.route-line) {
+		filter: drop-shadow(0 0 1.5px rgb(2 6 23 / 0.95));
+	}
+
+	:global(.weather-radar-tiles) {
+		mix-blend-mode: screen;
+	}
+
+	.weather-legend {
+		background: linear-gradient(
+			90deg,
+			#66a1ff 0%,
+			#2b6cff 35%,
+			#7c3aed 58%,
+			#e11d48 78%,
+			#facc15 100%
+		);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.weather-radar-tiles) {
+			transition: none !important;
+		}
 	}
 </style>
