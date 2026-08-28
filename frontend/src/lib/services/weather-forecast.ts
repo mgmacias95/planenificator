@@ -10,9 +10,11 @@ export interface ForecastPoint {
 	longitude: number;
 	precipitation: number[];
 	precipitationProbability: number[];
+	windSpeed: number[];
+	windDirection: number[];
 }
 
-export interface PrecipitationForecast {
+export interface WeatherForecast {
 	times: number[];
 	points: ForecastPoint[];
 	bounds: ForecastBounds;
@@ -23,8 +25,8 @@ const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const CACHE_DURATION_MS = 30 * 60 * 1000;
 const GRID_COLUMNS = 5;
 const GRID_ROWS = 4;
-const forecastCache = new Map<string, PrecipitationForecast>();
-const inFlightRequests = new Map<string, Promise<PrecipitationForecast>>();
+const forecastCache = new Map<string, WeatherForecast>();
+const inFlightRequests = new Map<string, Promise<WeatherForecast>>();
 
 interface OpenMeteoLocation {
 	latitude?: unknown;
@@ -33,6 +35,8 @@ interface OpenMeteoLocation {
 		time?: unknown;
 		precipitation?: unknown;
 		precipitation_probability?: unknown;
+		wind_speed_10m?: unknown;
+		wind_direction_10m?: unknown;
 	};
 }
 
@@ -79,7 +83,8 @@ export function buildForecastUrl(bounds: ForecastBounds) {
 	url.search = new URLSearchParams({
 		latitude: points.map((point) => point.latitude.toFixed(3)).join(','),
 		longitude: points.map((point) => point.longitude.toFixed(3)).join(','),
-		hourly: 'precipitation,precipitation_probability',
+		hourly: 'precipitation,precipitation_probability,wind_speed_10m,wind_direction_10m',
+		wind_speed_unit: 'kn',
 		timezone: 'UTC',
 		timeformat: 'unixtime',
 		forecast_days: '8',
@@ -88,11 +93,11 @@ export function buildForecastUrl(bounds: ForecastBounds) {
 	return url.toString();
 }
 
-export function parsePrecipitationForecast(
+export function parseWeatherForecast(
 	value: unknown,
 	bounds: ForecastBounds,
 	fetchedAt = Date.now()
-): PrecipitationForecast {
+): WeatherForecast {
 	const locations = (Array.isArray(value) ? value : [value]) as OpenMeteoLocation[];
 	if (locations.length === 0) throw new Error('Forecast data is unavailable');
 
@@ -102,17 +107,23 @@ export function parsePrecipitationForecast(
 		const locationTimes = finiteNumbers(location?.hourly?.time);
 		const precipitation = finiteNumbers(location?.hourly?.precipitation);
 		const probability = finiteNumbers(location?.hourly?.precipitation_probability);
+		const windSpeed = finiteNumbers(location?.hourly?.wind_speed_10m);
+		const windDirection = finiteNumbers(location?.hourly?.wind_direction_10m);
 		const latitude = Number(location?.latitude);
 		const longitude = Number(location?.longitude);
 		if (
 			!locationTimes ||
 			!precipitation ||
 			!probability ||
+			!windSpeed ||
+			!windDirection ||
 			!Number.isFinite(latitude) ||
 			!Number.isFinite(longitude) ||
 			locationTimes.length === 0 ||
 			precipitation.length !== locationTimes.length ||
-			probability.length !== locationTimes.length
+			probability.length !== locationTimes.length ||
+			windSpeed.length !== locationTimes.length ||
+			windDirection.length !== locationTimes.length
 		) {
 			continue;
 		}
@@ -123,7 +134,14 @@ export function parsePrecipitationForecast(
 		)
 			continue;
 		times ??= locationTimes;
-		points.push({ latitude, longitude, precipitation, precipitationProbability: probability });
+		points.push({
+			latitude,
+			longitude,
+			precipitation,
+			precipitationProbability: probability,
+			windSpeed,
+			windDirection
+		});
 	}
 
 	if (!times || points.length === 0) throw new Error('Forecast data is unavailable');
@@ -137,11 +155,11 @@ function cacheKey(bounds: ForecastBounds) {
 		.join(':');
 }
 
-export async function fetchPrecipitationForecast(
+export async function fetchWeatherForecast(
 	bounds: ForecastBounds,
 	fetcher: typeof fetch = fetch,
 	forceRefresh = false
-): Promise<PrecipitationForecast> {
+): Promise<WeatherForecast> {
 	const key = cacheKey(bounds);
 	const cached = forecastCache.get(key);
 	if (!forceRefresh && cached && Date.now() - cached.fetchedAt < CACHE_DURATION_MS) return cached;
@@ -153,7 +171,7 @@ export async function fetchPrecipitationForecast(
 			headers: { Accept: 'application/json' }
 		});
 		if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
-		const forecast = parsePrecipitationForecast(await response.json(), bounds);
+		const forecast = parseWeatherForecast(await response.json(), bounds);
 		forecastCache.set(key, forecast);
 		return forecast;
 	})();

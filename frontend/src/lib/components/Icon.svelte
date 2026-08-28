@@ -33,7 +33,8 @@
 		Scan,
 		Gauge,
 		Play,
-		Pause
+		Pause,
+		Wind
 	} from '@lucide/svelte';
 
 	interface Props {
@@ -71,7 +72,8 @@
 			| 'scan'
 			| 'gauge'
 			| 'play'
-			| 'pause';
+			| 'pause'
+			| 'wind';
 		class?: string;
 		size?: number;
 	}
@@ -147,4 +149,6 @@
 	<Play class={className} {size} />
 {:else if name === 'pause'}
 	<Pause class={className} {size} />
+{:else if name === 'wind'}
+	<Wind class={className} {size} />
 {/if}
