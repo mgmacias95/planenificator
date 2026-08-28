@@ -54,10 +54,6 @@ export class FlightPlanState {
 		});
 	}
 
-	calculationFingerprint(): string {
-		return this.serializeForDiff();
-	}
-
 	takeCleanSnapshot(): void {
 		this.cleanSnapshot = this.serializeForDiff();
 	}

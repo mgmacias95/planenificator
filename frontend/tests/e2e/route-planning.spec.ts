@@ -7,16 +7,25 @@ test.describe('VFR Route Planning & Waypoint Management', () => {
 		await page.goto('/');
 
 		// Verify Title & HUD Header
+<<<<<<< HEAD
 		await expect(page.getByRole('heading', { name: 'Planenificator', exact: true })).toBeVisible();
+=======
+		await expect(page.locator('h1')).toContainText('PLANENIFICATOR');
+>>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 
 		// Verify Map container exists
 		const mapEl = page.locator('#map');
 		await expect(mapEl).toBeVisible();
+<<<<<<< HEAD
 		await page.getByRole('button', { name: 'Add waypoint' }).click();
 		await mapEl.click({ position: { x: 240, y: 180 } });
 		await mapEl.click({ position: { x: 360, y: 240 } });
 
 		// Verify the newly plotted route uses the default segment
+=======
+
+		// Verify Default Segment 1 is displayed
+>>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 		await expect(page.getByText('Segment 1')).toBeVisible();
 
 		// Input Departure & Destination
@@ -29,7 +38,11 @@ test.describe('VFR Route Planning & Waypoint Management', () => {
 		await expect(destInput).toHaveValue('LEMD');
 
 		// Add New Segment
+<<<<<<< HEAD
 		await page.getByRole('button', { name: 'New Segment' }).click();
+=======
+		await page.getByRole('button', { name: '+ New Segment' }).click();
+>>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))
 		await expect(page.getByText('Add New Route Segment')).toBeVisible();
 		await page.getByRole('button', { name: 'Save Altitude' }).click();
 
@@ -37,6 +50,7 @@ test.describe('VFR Route Planning & Waypoint Management', () => {
 		await expect(page.getByText('Segment 2')).toBeVisible();
 	});
 });
+<<<<<<< HEAD
 
 test.describe('iPad route planning', () => {
 	test.use({
@@ -123,3 +137,5 @@ test.describe('iPad split view', () => {
 		expect(mapBox!.y + mapBox!.height).toBeLessThanOrEqual(834);
 	});
 });
+=======
+>>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))

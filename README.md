@@ -135,3 +135,7 @@ Planenificator bundles and utilizes open geographic and aeronautical datasets fo
 
 - **GeoNames**: Spanish municipal and populated settlement gazetteer data is provided by [GeoNames](https://www.geonames.org/) under the [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) license.
 - **OurAirports**: Spanish aerodrome, airstrip, and heliport data is sourced from [OurAirports](https://ourairports.com/data/) (Dedicated to the Public Domain / CC0).
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0577d7b (feat: Implement Svelte Frontend (#16))

@@ -11,7 +11,6 @@
 	let isSaving = $state<boolean>(false);
 	let pendingPlanToLoad = $state<SavedFlightPlan | null>(null);
 	let isConfirmOverlayOpen = $state<boolean>(false);
-	let statusMessage = $state<string>('');
 
 	async function refreshPlans() {
 		savedPlans = await flightPlanStorage.listSavedPlans();
@@ -32,7 +31,6 @@
 			flightPlanStore.takeCleanSnapshot();
 			planNameInput = '';
 			await refreshPlans();
-			statusMessage = m.projects_saved({ name: plan.name });
 		} finally {
 			isSaving = false;
 		}
@@ -48,7 +46,6 @@
 			flightPlanStore.activePlanName = targetPlan.name;
 			flightPlanStore.takeCleanSnapshot();
 			await refreshPlans();
-			statusMessage = m.projects_saved({ name: targetPlan.name });
 		} finally {
 			isSaving = false;
 		}
@@ -69,7 +66,6 @@
 
 	function executeLoadPlan(plan: SavedFlightPlan) {
 		flightPlanStore.loadSavedPlan(plan);
-		statusMessage = m.projects_loaded({ name: plan.name });
 		isConfirmOverlayOpen = false;
 		pendingPlanToLoad = null;
 	}
@@ -87,21 +83,16 @@
 				flightPlanStore.activePlanId = null;
 			}
 			await refreshPlans();
-			statusMessage = m.projects_deleted();
 		}
-	}
-
-	function handleWindowKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && isConfirmOverlayOpen) handleCancelConfirm();
 	}
 </script>
 
-<svelte:window onkeydown={handleWindowKeydown} />
-
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
-		<h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
-			<Icon name="folder-open" class="h-4 w-4 text-cyan-400" />
+		<h3
+			class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-300 uppercase"
+		>
+			<Icon name="clipboard" class="h-3.5 w-3.5 text-cyan-400" />
 			<span>{m.projects_title()}</span>
 		</h3>
 		<span class="font-mono text-[11px] text-slate-400">
@@ -111,18 +102,7 @@
 	</div>
 
 	<!-- Save Current Plan Form (Creates a New Plan) -->
-	{#if statusMessage}
-		<div
-			class="flex items-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-950/50 px-3 py-2.5 text-xs font-medium text-emerald-200"
-			role="status"
-			aria-live="polite"
-		>
-			<Icon name="check-circle" class="h-4 w-4 shrink-0" />
-			<span>{statusMessage}</span>
-		</div>
-	{/if}
-
-	<div class="space-y-2 rounded-xl border border-slate-700/80 bg-slate-950/70 p-3.5 shadow-xs">
+	<div class="space-y-2 rounded-lg border border-slate-800 bg-slate-900 p-3">
 		<label for="plan-name-input" class="block text-[11px] font-medium text-slate-400">
 			{m.projects_save_label()}
 		</label>
@@ -148,16 +128,10 @@
 	<!-- Saved Plans List -->
 	<div class="max-h-[320px] space-y-2 overflow-y-auto pr-1">
 		{#if savedPlans.length === 0}
-			<div class="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 p-6 text-center">
-				<div
-					class="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-slate-800 text-slate-300"
-				>
-					<Icon name="folder-open" class="h-5 w-5" />
-				</div>
-				<div class="text-sm font-semibold text-slate-200">{m.projects_empty()}</div>
-				<p class="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-400">
-					{m.projects_empty_hint()}
-				</p>
+			<div
+				class="rounded-lg border border-slate-800 bg-slate-950 p-4 text-center text-xs text-slate-500 italic"
+			>
+				{m.projects_empty()}
 			</div>
 		{:else}
 			{#each savedPlans as plan (plan.id)}
@@ -171,7 +145,7 @@
 							handlePlanClick(plan);
 						}
 					}}
-					class="group flex min-h-16 cursor-pointer items-center justify-between gap-2 rounded-xl border p-3 transition-all {plan.id ===
+					class="group flex cursor-pointer items-center justify-between gap-2 rounded-lg border p-2.5 transition-all {plan.id ===
 					flightPlanStore.activePlanId
 						? 'border-cyan-500/50 bg-slate-900/90 shadow-xs ring-1 ring-cyan-500/20'
 						: 'hover:bg-slate-850 border-slate-800 bg-slate-900 hover:border-slate-700'}"
@@ -229,11 +203,9 @@
 <!-- Confirmation Overlay Modal when loading replaces existing plan changes -->
 {#if isConfirmOverlayOpen && pendingPlanToLoad}
 	<div
-		class="modal-safe fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-xs"
+		class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs"
 		role="dialog"
 		aria-modal="true"
-		aria-labelledby="load-plan-title"
-		aria-describedby="load-plan-description"
 		tabindex="-1"
 		onkeydown={(e) => {
 			if (e.key === 'Escape') handleCancelConfirm();
@@ -249,10 +221,10 @@
 					<Icon name="alert-triangle" class="h-5 w-5" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<h4 id="load-plan-title" class="text-base font-bold text-white">
+					<h4 class="text-sm font-bold text-white">
 						{m.confirm_load_title ? m.confirm_load_title() : 'Load Flight Plan?'}
 					</h4>
-					<p id="load-plan-description" class="mt-1 text-sm leading-relaxed text-slate-300">
+					<p class="mt-1 text-xs leading-relaxed text-slate-400">
 						{m.confirm_load_message
 							? m.confirm_load_message({ name: pendingPlanToLoad.name })
 							: `Loading "${pendingPlanToLoad.name}" will replace your current route. Any unsaved changes will be lost.`}

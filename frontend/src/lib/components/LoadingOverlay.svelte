@@ -66,7 +66,7 @@
 
 {#if calculationStore.isCalculating}
 	<div
-		class="modal-safe fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/85 p-4 backdrop-blur-md transition-all duration-300"
+		class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md transition-all duration-300"
 		role="dialog"
 		aria-modal="true"
 		aria-label="Route calculation in progress"
