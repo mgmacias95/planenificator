@@ -133,6 +133,10 @@
 		}).format(new Date(timestamp * 1000))} UTC`;
 	}
 
+	function formatRadarDateTimeInput(timestamp: number) {
+		return new Date(timestamp * 1000).toISOString().slice(0, 16);
+	}
+
 	function stopRadarAnimation() {
 		if (radarAnimationTimer) {
 			clearInterval(radarAnimationTimer);
@@ -233,6 +237,21 @@
 		selectRadarFrame(radarFrames.length - 1);
 	}
 
+	function selectRadarDateTime(value: string) {
+		const targetTime = Date.parse(`${value}:00Z`) / 1000;
+		if (!Number.isFinite(targetTime) || radarFrames.length === 0) return;
+		let closestIndex = 0;
+		let closestDifference = Math.abs(radarFrames[0].time - targetTime);
+		for (let index = 1; index < radarFrames.length; index += 1) {
+			const difference = Math.abs(radarFrames[index].time - targetTime);
+			if (difference < closestDifference) {
+				closestIndex = index;
+				closestDifference = difference;
+			}
+		}
+		selectRadarFrame(closestIndex);
+	}
+
 	function toggleRadarAnimation() {
 		if (weatherPlaying) {
 			stopRadarAnimation();
@@ -240,11 +259,8 @@
 		}
 		if (radarFrames.length < 2) return;
 		weatherPlaying = true;
-		const firstRecentFrame = Math.max(0, radarFrames.length - 4);
-		if (radarFrameIndex < firstRecentFrame) radarFrameIndex = firstRecentFrame;
 		radarAnimationTimer = setInterval(() => {
-			radarFrameIndex =
-				radarFrameIndex >= radarFrames.length - 1 ? firstRecentFrame : radarFrameIndex + 1;
+			radarFrameIndex = (radarFrameIndex + 1) % radarFrames.length;
 			updateRadarLayer();
 		}, 1300);
 	}
@@ -742,7 +758,27 @@
 						</button>
 					</div>
 				{:else if selectedRadarFrame}
-					<div class="mt-4 flex items-center gap-3">
+					<div class="mt-4">
+						<label
+							for="weather-datetime"
+							class="mb-1.5 block text-[11px] font-semibold text-slate-300"
+						>
+							{m.map_weather_datetime()}
+						</label>
+						<input
+							id="weather-datetime"
+							type="datetime-local"
+							min={formatRadarDateTimeInput(radarFrames[0].time)}
+							max={formatRadarDateTimeInput(radarFrames[radarFrames.length - 1].time)}
+							step="600"
+							value={formatRadarDateTimeInput(selectedRadarFrame.time)}
+							disabled={!weatherEnabled}
+							onchange={(event) => selectRadarDateTime(event.currentTarget.value)}
+							class="min-h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm font-semibold text-white scheme-dark focus:border-cyan-400 focus:ring-cyan-400 disabled:opacity-40"
+						/>
+					</div>
+
+					<div class="mt-3 flex items-center gap-3">
 						<button
 							type="button"
 							onclick={toggleRadarAnimation}

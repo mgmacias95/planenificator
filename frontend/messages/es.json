@@ -127,6 +127,7 @@
 	"map_weather_play": "Reproducir historial del radar",
 	"map_weather_pause": "Pausar historial del radar",
 	"map_weather_time": "Hora del radar",
+	"map_weather_datetime": "Fecha y hora de observación (UTC)",
 	"map_weather_latest": "Última",
 	"map_weather_opacity": "Opacidad del radar",
 	"map_weather_light": "Débil",
