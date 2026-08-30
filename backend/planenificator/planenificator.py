@@ -51,7 +51,7 @@ def generate_navigation_report(
 
   total_traveled_distance, total_time = 0, 0
   # use a flag to control wether we are climbing or not
-  is_climbing = True
+  is_climbing = initial_alt < cruise_alt
   # compute top of climb
   climb_time = helpers.calculate_top_time(
       initial_alt=initial_alt,
@@ -104,14 +104,18 @@ def generate_navigation_report(
 
     # compute estimated time between the current and the next waypoint
     ete = helpers.calculate_leg_ete(dist_nm, gs)
-    flight_start_date += datetime.timedelta(minutes=ete)
     total_time += ete
 
     # check if we reached the TOC or not
     if is_climbing and total_time >= climb_time:
       logging.debug('Reached TOC')
       is_climbing = False
-      point_names[i+1] += ' (TOC)'
+      table.append([
+          'TOC', '', '', '', '', '', '', round((vy * climb_time) / 60),
+          climb_time, flight_start_date + datetime.timedelta(minutes=climb_time)
+      ])
+
+    flight_start_date += datetime.timedelta(minutes=ete)
 
     wind_str = f"{met.wind_direction:.0f}° / {met.wind_speed:.1f} kt"
     table.append([
@@ -134,10 +138,13 @@ def generate_navigation_report(
   time_to_start_descent = flight_start_date - datetime.timedelta(minutes=descend_time)
   logging.debug('Time to start descent: %s', time_to_start_descent)
 
-  for row in reversed(table):
+  for i, row in enumerate(reversed(table)):
     if is_descending and row[-1] <= time_to_start_descent: 
       logging.debug('Reached TOD')
-      row[0] += ' (TOD)'
+      table.insert(len(table) - i, [
+          'TOD', '', '', '', '', '', '', round((vy * descend_time) / 60),
+          descend_time, time_to_start_descent.strftime('%H:%M')
+      ]) 
       is_descending = False
     # pretty print the ETA showing only the time and minutes (assuming the
     # flight does not take more than a day)
