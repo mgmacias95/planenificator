@@ -7,7 +7,6 @@ import datetime
 import logging
 import time
 from geopy.distance import geodesic
-import planenificator.osm as osm
 import planenificator.kml_parser as kml
 import planenificator.meteo as meteo
 import planenificator.helpers as helpers
@@ -41,16 +40,11 @@ def generate_navigation_report(
     rate_of_descent: rate of descent in feet per minute.
     flight_start_date: date of the flight
   """
-  route_points = kml.parse_kml_route(input_kml)
-  if not route_points:
+  coords, point_names = kml.parse_kml_route(input_kml)
+  if not coords:
     logging.warning('No coordinates found.')
     return None
 
-  coords = [(p[0], p[1]) for p in route_points]
-  point_names = [
-      p[2] if p[2] else osm.get_osm_landmark(p[0], p[1])
-      for p in route_points
-  ]
   start_time = flight_start_date
 
   table = []

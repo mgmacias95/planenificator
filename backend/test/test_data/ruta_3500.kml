@@ -2,32 +2,17 @@
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
 <Document>
 	<name>ruta_3500.kml</name>
-	<StyleMap id="msn_ylw-pushpin">
+	<StyleMap id="m_ylw-pushpin">
 		<Pair>
 			<key>normal</key>
-			<styleUrl>#sn_ylw-pushpin</styleUrl>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
 		</Pair>
 		<Pair>
 			<key>highlight</key>
-			<styleUrl>#sh_ylw-pushpin</styleUrl>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
 		</Pair>
 	</StyleMap>
-	<Style id="sh_ylw-pushpin">
-		<IconStyle>
-			<scale>1.3</scale>
-			<Icon>
-				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
-			</Icon>
-			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
-		</IconStyle>
-		<BalloonStyle>
-		</BalloonStyle>
-		<LineStyle>
-			<color>ff0900fc</color>
-			<width>3</width>
-		</LineStyle>
-	</Style>
-	<Style id="sn_ylw-pushpin">
+	<Style id="s_ylw-pushpin">
 		<IconStyle>
 			<scale>1.1</scale>
 			<Icon>
@@ -35,23 +20,104 @@
 			</Icon>
 			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
 		</IconStyle>
-		<BalloonStyle>
-		</BalloonStyle>
-		<LineStyle>
-			<color>ff0900fc</color>
-			<width>3</width>
-		</LineStyle>
 	</Style>
-	<Placemark>
-		<name>ruta2</name>
-		<styleUrl>#msn_ylw-pushpin</styleUrl>
-		<LineString>
-			<tessellate>1</tessellate>
-			<coordinates>
-				-4.678371116916678,38.06165912604941,0 -4.379108476119908,38.01748584060874,0 -4.379261099577669,37.89263601791534,0 -4.554803517556869,37.67727589859762,0 -4.565932595632949,37.9451610080587,0 
-			</coordinates>
-		</LineString>
-		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.7.1155"></atom:link>
-	</Placemark>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Folder>
+		<name>ruta_3500</name>
+		<Placemark>
+			<name>Lucena</name>
+			<LookAt>
+				<longitude>-4.853336613347104</longitude>
+				<latitude>37.54594828831819</latitude>
+				<altitude>0</altitude>
+				<heading>-0.4471870975401423</heading>
+				<tilt>0</tilt>
+				<range>86074.12773659898</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-4.486119415536312,37.41226789776919,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Aguilar de la Frontera</name>
+			<LookAt>
+				<longitude>-4.853336613347104</longitude>
+				<latitude>37.54594828831819</latitude>
+				<altitude>0</altitude>
+				<heading>-0.4471870975401423</heading>
+				<tilt>0</tilt>
+				<range>86074.12773659898</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-4.657487328653435,37.51584879998287,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Montilla</name>
+			<LookAt>
+				<longitude>-4.853336613347104</longitude>
+				<latitude>37.54594828831819</latitude>
+				<altitude>0</altitude>
+				<heading>-0.4471870975401423</heading>
+				<tilt>0</tilt>
+				<range>86074.12773659898</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-4.637519823167693,37.58634716614279,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Espejo</name>
+			<LookAt>
+				<longitude>-4.853336613347104</longitude>
+				<latitude>37.54594828831819</latitude>
+				<altitude>0</altitude>
+				<heading>-0.4471870975401423</heading>
+				<tilt>0</tilt>
+				<range>86074.12773659898</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-4.554446949840596,37.67934614825449,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Villafranca de Cordoba</name>
+			<LookAt>
+				<longitude>-4.732800578683911</longitude>
+				<latitude>37.76010217752211</latitude>
+				<altitude>0</altitude>
+				<heading>-0.3738232184345197</heading>
+				<tilt>0</tilt>
+				<range>86074.12773659515</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>-4.565736594024555,37.94652037988605,0</coordinates>
+			</Point>
+		</Placemark>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.7.1327"></atom:link>
+	</Folder>
 </Document>
 </kml>

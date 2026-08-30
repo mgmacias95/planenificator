@@ -9,4 +9,5 @@ build/
 .DS_Store
 Thumbs.db
 .gemini/
-
+.vscode/
+.pytest_cache/
