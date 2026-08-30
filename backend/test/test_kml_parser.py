@@ -2,49 +2,28 @@ import tempfile
 from planenificator import kml_parser
 
 
-def test_parse_kml_polygon_simple():
-  expected_points = [
-      (37.80554787143573, -5.02400017090408),
-      (37.80726474220169, -5.106797515253634),
-      (37.7964126785871, -5.23662668865428),
-      (37.77882278876545, -5.387301539741635),
-      (37.768034173655, -5.464520283787857),
-      (37.69852644293979, -5.2780058566498),
-      (37.54063211577323, -5.08320515480669),
-      (37.39356021630838, -4.763766954508081),
-      (37.27816296701328, -4.349199212448381),
-      (37.40905267514302, -4.489859977093658),
-      (37.51172457592259, -4.655488439143332),
-      (37.58161605321248, -4.639991012387478),
-      (37.66768237534411, -4.72227629564874),
+def test_parse_kml():
+  points, names = kml_parser.parse_kml_route('test/test_data/ruta_placemarks.kml')
+
+  assert points == [
+      (37.8059735691895, -5.023993575001656),
+      (37.80374568471285, -5.107951841782366),
+      (37.83360752314795, -5.251437880961358),
+      (38.07614041834963, -5.015239144843968),
+      (38.06486881587754, -4.684806059526866),
+      (38.0177981718432, -4.378900661674635),
+      (37.8956975101375, -4.376691442040385),
+      (37.68114335051913, -4.5549261132205),
+      (37.94762103723209, -4.568426312129827),
   ]
-  assert kml_parser.parse_kml_polygon('test/test_data/route.kml') == expected_points
-
-
-def test_parse_kml_route_named_placemarks():
-  kml_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <Placemark>
-      <name>LECU - Cuatro Vientos</name>
-      <Point>
-        <coordinates>-3.785,40.370,0</coordinates>
-      </Point>
-    </Placemark>
-    <Placemark>
-      <name>Robledillo</name>
-      <Point>
-        <coordinates>-3.500,40.500,0</coordinates>
-      </Point>
-    </Placemark>
-  </Document>
-</kml>"""
-  with tempfile.NamedTemporaryFile('w', suffix='.kml', delete=False) as f:
-    f.write(kml_xml)
-    f.flush()
-    result = kml_parser.parse_kml_route(f.name)
-    assert result == [
-        (40.370, -3.785, 'LECU - Cuatro Vientos'),
-        (40.500, -3.500, 'Robledillo'),
-    ]
-
+  assert names == [
+      'Castillo Almodovar',
+      'Posadas',
+      'Hornachuelos',
+      'Villaviciosa de Cordoba',
+      'Embalse del Guadalmellato',
+      'Montoro',
+      'Bujalance',
+      'Espejo',
+      'Villafranca de Cordoba',
+  ]

@@ -5,10 +5,6 @@ from planenificator import meteo
 from planenificator import segments
 
 
-@mock.patch('planenificator.osm.get_osm_landmark', side_effect=[
-    'Almodóvar del Río', 'Hornachuelos', 'Villaviciosa de Córdoba',
-    'Adamuz', 'Adamuz', 'Montoro', 'Bujalance', 'Espejo', 'Villafranca de Córdoba'
-])
 @mock.patch('planenificator.meteo.fetch_meteo', return_value=meteo.Meteo(0, 0))
 @mock.patch('planenificator.notams_spain.fetch_notams_by_route', return_value=[])
 @mock.patch('planenificator.notams_spain.fetch_notams_by_aerodromes', return_value=[])
