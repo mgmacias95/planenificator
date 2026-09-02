@@ -80,12 +80,12 @@ def calculate_leg_ete(distance_nm: float, ground_speed: float) -> float:
   return (distance_nm / ground_speed) * 60
 
 
-def calculate_top_time(
+def calculate_top_of_climb(
     initial_alt: int,
     cruise_alt: int,
     rate: int,
-):
-  """Calculates the time required to reach the top of climb/descent in minutes
+) -> float:
+  """Calculates the time required to reach the top of climb in minutes
 
   Args:
     initial_alt: initial altitude in feet
@@ -93,6 +93,24 @@ def calculate_top_time(
     rate: rate of climb/descent in feet per minute.
   """
   return (cruise_alt - initial_alt) / rate
+
+
+def calculate_top_of_descent(
+    arrival_alt: int,
+    cruise_alt: int,
+    total_distance: int
+) -> float:
+  """Computes the top of descent distance from the beggining of the route
+
+  The calculation is done using the "rule of 3": every 1000ft to loose will
+  require 3 nm of distance.
+
+  Args:
+    arrival_alt: final altitude in feet
+    cruise_alt: cruise altitude in feet
+    total_distance: total_distance the trip takes.
+  """
+  return total_distance - ((cruise_alt - arrival_alt) / 1000 * 3)
 
 
 def check_semi_circular_rule(course: float, altitude: int):

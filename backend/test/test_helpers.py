@@ -95,6 +95,6 @@ def test_calculate_leg_ete(distance_nm, ground_speed, expected_ete):
     ],
 )
 def test_calculate_top_time(initial_alt, cruise_alt, rate, expected_time):
-  assert helpers.calculate_top_time(initial_alt, cruise_alt, rate) == pytest.approx(
+  assert helpers.calculate_top_of_climb(initial_alt, cruise_alt, rate) == pytest.approx(
       expected_time
   )
