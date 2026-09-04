@@ -6,17 +6,16 @@
 
 	let showInfoNotams = $state<boolean>(false);
 
+	const activeConflicts = $derived(calculationStore.notams.filter((n) => n.severity !== 'INFO'));
+	const infoNotams = $derived(calculationStore.notams.filter((n) => n.severity === 'INFO'));
+
 	const totalAlerts = $derived(
-		calculationStore.notams.length +
+		activeConflicts.length +
 			calculationStore.semicircularNotices.length +
 			calculationStore.warnings.length
 	);
 
-	const displayedNotams = $derived(
-		showInfoNotams
-			? calculationStore.notams
-			: calculationStore.notams.filter((n) => n.severity !== 'INFO')
-	);
+	const displayedNotams = $derived(showInfoNotams ? calculationStore.notams : activeConflicts);
 </script>
 
 <div class="space-y-3">
@@ -53,7 +52,7 @@
 			Calculate a route to perform semicircular rule safety checks and ENAIRE corridor NOTAM
 			filtering.
 		</div>
-	{:else if totalAlerts === 0}
+	{:else if totalAlerts === 0 && infoNotams.length === 0}
 		<div
 			class="flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300"
 		>
@@ -62,6 +61,14 @@
 		</div>
 	{:else}
 		<div class="max-h-[380px] space-y-2.5 overflow-y-auto pr-1">
+			{#if totalAlerts === 0}
+				<div
+					class="flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300"
+				>
+					<Icon name="check-circle" class="h-4 w-4 shrink-0 text-emerald-400" />
+					<span>{m.safety_none()}</span>
+				</div>
+			{/if}
 			<!-- Semicircular Rule Notices -->
 			{#each calculationStore.semicircularNotices as notice (notice.segmentIndex)}
 				<div
@@ -174,7 +181,7 @@
 
 					<!-- Aviation Raw NOTAM text -->
 					<p
-						class="rounded-md border border-slate-800/80 bg-slate-950/70 p-2 font-mono text-[11px] leading-relaxed tracking-wide text-slate-400 whitespace-pre-wrap break-words"
+						class="rounded-md border border-slate-800/80 bg-slate-950/70 p-2 font-mono text-[11px] leading-relaxed tracking-wide break-words whitespace-pre-wrap text-slate-400"
 					>
 						{notam.text}
 					</p>

@@ -231,6 +231,14 @@ select {
 	.print-only {
 		display: block !important;
 	}
+	.print-page-break {
+		break-before: page !important;
+		page-break-before: always !important;
+	}
+	.print-avoid-break {
+		break-inside: avoid !important;
+		page-break-inside: avoid !important;
+	}
 	@page {
 		size: A4 portrait;
 		margin: 1cm;

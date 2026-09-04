@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { NotamAlert } from '$lib/types/flight';
 
 // Semicircular rule checker for VFR flights
 function checkSemicircularRule(
@@ -79,5 +80,63 @@ describe('Aviation Safety Rules & Corridor Checks', () => {
 
 		// NOTAM active FL100 to FL150 (10000 ft to 15000 ft) -> no overlap
 		expect(isNotamAltitudeConflict(100, 150, minAlt, maxAlt)).toBe(false);
+	});
+
+	it('should categorize NOTAMs into operational conflicts and informational advisories for briefing PDF', () => {
+		const allNotams: NotamAlert[] = [
+			{
+				id: 'A1234/26',
+				location: 'LEBA',
+				validFrom: '2026-09-04T08:00:00.000Z',
+				validTo: '2026-09-04T18:00:00.000Z',
+				qCode: 'QMRLC',
+				purpose: 'DEPARTURE CLOSED',
+				text: 'RWY 05/23 CLSD DUE TO WIP',
+				summary: 'LEBA (Departure): Aerodrome Closed',
+				severity: 'WARNING'
+			},
+			{
+				id: 'B5678/26',
+				location: 'EN ROUTE',
+				validFrom: '2026-09-04T00:00:00.000Z',
+				validTo: '2026-09-04T23:59:00.000Z',
+				qCode: 'QWMLW',
+				purpose: 'Route Conflict',
+				text: 'MILITARY EXERCISE AIRSPACE RESTRICTION FL040-FL080',
+				summary: 'MADRID CTA Airspace Restriction',
+				severity: 'WARNING'
+			},
+			{
+				id: 'C9012/26',
+				location: 'LEBA',
+				validFrom: '2026-09-04T00:00:00.000Z',
+				validTo: '2026-09-04T23:59:00.000Z',
+				qCode: 'QOLAS',
+				purpose: 'Departure Information',
+				text: 'OBSTACLE CRANE ERECTED 50M AGL',
+				summary: 'LEBA (Departure Advisory)',
+				severity: 'INFO'
+			},
+			{
+				id: 'D3456/26',
+				location: 'CORDOBA',
+				validFrom: '2026-09-04T00:00:00.000Z',
+				validTo: '2026-09-04T23:59:00.000Z',
+				qCode: 'QFAXX',
+				purpose: 'En Route Information',
+				text: 'PARAGLIDING ACTIVITY IN VICINITY',
+				summary: 'CORDOBA (En Route Advisory)',
+				severity: 'INFO'
+			}
+		];
+
+		const operationalConflicts = allNotams.filter((n) => n.severity !== 'INFO');
+		const informationalNotams = allNotams.filter((n) => n.severity === 'INFO');
+
+		expect(operationalConflicts).toHaveLength(2);
+		expect(operationalConflicts.map((n) => n.id)).toEqual(['A1234/26', 'B5678/26']);
+
+		expect(informationalNotams).toHaveLength(2);
+		expect(informationalNotams.map((n) => n.id)).toEqual(['C9012/26', 'D3456/26']);
 	});
 });

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { flightPlanStore, SEGMENT_COLORS } from '$lib/state/flight-plan.svelte';
-	import { calculationStore } from '$lib/state/calculation.svelte';
 	import SegmentModal from './SegmentModal.svelte';
 	import Icon from './Icon.svelte';
 	import * as m from '$lib/paraglide/messages';
@@ -47,20 +46,6 @@
 	}
 
 	const waypointMap = $derived(new Map(flightPlanStore.waypoints.map((w) => [w.id, w])));
-
-	function getSegmentNotices(sIdx: number) {
-		if (!calculationStore.hasCalculated) return [];
-		const seg = flightPlanStore.segments[sIdx];
-		if (!seg) return [];
-		const segWpNames = seg.waypointIds
-			.map((id) => waypointMap.get(id)?.name)
-			.filter((name): name is string => Boolean(name));
-
-		return calculationStore.semicircularNotices.filter((notice) => {
-			if (notice.segmentIndex === sIdx + 1) return true;
-			return segWpNames.some((name) => notice.advisoryMessage.includes(name));
-		});
-	}
 </script>
 
 <div class="space-y-3">
@@ -92,7 +77,6 @@
 				{@const isLastSegment = sIdx === flightPlanStore.segments.length - 1}
 				{@const isLocked = isSegmentLocked(sIdx)}
 				{@const segColor = seg.color || SEGMENT_COLORS[sIdx % SEGMENT_COLORS.length]}
-				{@const segNotices = getSegmentNotices(sIdx)}
 
 				<div
 					class="overflow-hidden rounded-xl border bg-slate-900/90 shadow-xs transition-all"
@@ -141,16 +125,6 @@
 								{seg.cruiseAlt} ft
 							</span>
 
-							{#if segNotices.length > 0}
-								<span
-									class="flex items-center gap-1 rounded-xs border border-amber-800/80 bg-amber-950/80 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-300 uppercase"
-									title={segNotices.map((n) => n.advisoryMessage).join('\n')}
-								>
-									<Icon name="alert-triangle" class="h-2.5 w-2.5" />
-									<span>VFR RULE</span>
-								</span>
-							{/if}
-
 							{#if isLocked}
 								<span title="Locked previous segment" class="text-slate-500">
 									<Icon name="lock" class="h-3 w-3" />
@@ -192,20 +166,6 @@
 					<!-- Segment Waypoints List -->
 					{#if !seg.collapsed}
 						<div class="space-y-1.5 border-t border-slate-800/80 bg-slate-950/40 p-2">
-							{#if segNotices.length > 0}
-								<div class="space-y-1 rounded-md border border-amber-900/60 bg-amber-950/40 p-2">
-									{#each segNotices as notice (notice.advisoryMessage)}
-										<div class="flex items-start gap-1.5 text-[11px] text-amber-300">
-											<Icon
-												name="alert-triangle"
-												class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400"
-											/>
-											<span class="leading-tight">{notice.advisoryMessage}</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
 							{#if seg.waypointIds.length === 0}
 								<p class="p-1 text-xs text-slate-500 italic">
 									{m.segment_empty_hint()}

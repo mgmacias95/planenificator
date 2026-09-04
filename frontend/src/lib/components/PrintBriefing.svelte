@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
 	import { calculationStore } from '$lib/state/calculation.svelte';
+	import { formatNotamAltitudeRange } from '$lib/services/pyodide.svelte';
+
+	const conflictNotams = $derived(calculationStore.notams.filter((n) => n.severity !== 'INFO'));
+	const infoNotams = $derived(calculationStore.notams.filter((n) => n.severity === 'INFO'));
 </script>
 
 <div class="print-only space-y-6 bg-white p-8 font-sans text-xs text-black">
@@ -25,7 +29,8 @@
 		<div>
 			<div class="font-bold text-gray-500">ROUTE</div>
 			<div class="text-sm font-bold">
-				{flightPlanStore.profile.depIcao || 'DEP'} &rarr; {flightPlanStore.profile.destIcao || 'DEST'}
+				{flightPlanStore.profile.depIcao || 'DEP'} &rarr; {flightPlanStore.profile.destIcao ||
+					'DEST'}
 			</div>
 		</div>
 
@@ -102,7 +107,7 @@
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-300">
-				{#each calculationStore.navLog as leg}
+				{#each calculationStore.navLog as leg (leg.legIndex)}
 					<tr>
 						<td class="px-2 py-1 font-bold">{leg.legIndex}</td>
 						<td class="px-2 py-1">{leg.fromName}</td>
@@ -138,24 +143,75 @@
 				VFR Semicircular Rule Compliance
 			</h2>
 			<ul class="list-disc space-y-1 pl-5 font-mono text-xs">
-				{#each calculationStore.semicircularNotices as notice}
+				{#each calculationStore.semicircularNotices as notice (notice.segmentIndex)}
 					<li>{notice.advisoryMessage}</li>
 				{/each}
 			</ul>
 		</div>
 	{/if}
 
-	<!-- Active NOTAM Briefing -->
-	{#if calculationStore.notams.length > 0}
+	<!-- Operational NOTAM Briefing (Conflicts & Safety Warnings) -->
+	{#if conflictNotams.length > 0}
 		<div>
 			<h2 class="mb-2 border-b border-black pb-1 text-sm font-bold tracking-wider uppercase">
-				Operational NOTAM Briefing (2km Safety Corridor)
+				Operational NOTAM Briefing (Route & Aerodrome Conflicts)
 			</h2>
 			<div class="space-y-3 font-mono text-[11px]">
-				{#each calculationStore.notams as notam}
-					<div class="rounded-sm border border-gray-400 bg-gray-50 p-2">
-						<div class="font-bold">[{notam.id}] {notam.location} · {notam.purpose}</div>
-						<div class="mt-1">{notam.text}</div>
+				{#each conflictNotams as notam (notam.id)}
+					<div class="print-avoid-break rounded-sm border border-gray-400 bg-gray-50 p-2">
+						<div class="flex items-center justify-between font-bold">
+							<span>[{notam.id}] {notam.location} · {notam.purpose}</span>
+							{#if notam.lowerLimitFt !== undefined || notam.upperLimitFt !== undefined}
+								<span class="text-[10px] text-gray-600">
+									{formatNotamAltitudeRange(notam.lowerLimitFt, notam.upperLimitFt)}
+								</span>
+							{/if}
+						</div>
+						{#if notam.summary}
+							<div class="mt-0.5 text-gray-700 italic">{notam.summary}</div>
+						{/if}
+						<div class="mt-1 whitespace-pre-wrap">{notam.text}</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Informational NOTAMs Briefing (Separate Page) -->
+	{#if infoNotams.length > 0}
+		<div class="print-page-break pt-4" style="break-before: page; page-break-before: always;">
+			<div class="mb-4 flex items-center justify-between border-b-2 border-black pb-3">
+				<div>
+					<h2 class="text-lg font-bold tracking-tight uppercase">Informational NOTAMs Briefing</h2>
+					<p class="font-mono text-xs text-gray-600">
+						ROUTE CORRIDOR & AERODROMES · EN ROUTE ADVISORIES (NO DIRECT ROUTE/ALTITUDE CONFLICT)
+					</p>
+				</div>
+				<div class="text-right font-mono text-xs">
+					<div>
+						<strong>Route:</strong>
+						{flightPlanStore.profile.depIcao || 'DEP'} &rarr; {flightPlanStore.profile.destIcao ||
+							'DEST'}
+					</div>
+					<div><strong>Informational NOTAMs:</strong> {infoNotams.length}</div>
+				</div>
+			</div>
+
+			<div class="space-y-3 font-mono text-[11px]">
+				{#each infoNotams as notam (notam.id)}
+					<div class="print-avoid-break rounded-sm border border-gray-400 bg-gray-50 p-2">
+						<div class="flex items-center justify-between font-bold">
+							<span>[{notam.id}] {notam.location} · {notam.purpose}</span>
+							{#if notam.lowerLimitFt !== undefined || notam.upperLimitFt !== undefined}
+								<span class="text-[10px] text-gray-600">
+									{formatNotamAltitudeRange(notam.lowerLimitFt, notam.upperLimitFt)}
+								</span>
+							{/if}
+						</div>
+						{#if notam.summary}
+							<div class="mt-0.5 text-gray-700 italic">{notam.summary}</div>
+						{/if}
+						<div class="mt-1 whitespace-pre-wrap">{notam.text}</div>
 					</div>
 				{/each}
 			</div>

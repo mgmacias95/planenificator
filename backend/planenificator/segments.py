@@ -59,6 +59,7 @@ def generate_multi_segment_navigation_report(
       'aerodrome_conflicts': [],
       'all_aerodrome_notams': [],
       'all_route_notams': [],
+      'semicircular_warnings': [],
   }
 
   current_alt = initial_alt

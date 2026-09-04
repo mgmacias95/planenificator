@@ -1,4 +1,5 @@
 import type { PyodideInterface } from 'pyodide';
+import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import { base } from '$app/paths';
 import type {
 	Waypoint,
@@ -470,6 +471,84 @@ ${placemarksXml}
 				text: c.itemE || '',
 				summary: `${c.itemA || 'AD'} (${roleDesc}): ${statusDesc}`,
 				severity: warnType === 'CLOSED' ? 'WARNING' : 'CAUTION'
+			});
+		});
+
+		const parseIsoDate = (val: any): string => {
+			if (!val) return '';
+			try {
+				const d = typeof val === 'number' ? new SvelteDate(val) : new SvelteDate(String(val));
+				return isNaN(d.getTime()) ? '' : d.toISOString();
+			} catch {
+				return '';
+			}
+		};
+
+		const seenNotamIds = new SvelteSet<string>();
+		notams.forEach((n) => {
+			if (n.id) seenNotamIds.add(n.id);
+		});
+
+		// Informational route NOTAMs (no direct time/altitude conflict)
+		(notamData.all_route_notams || []).forEach((c: any) => {
+			const notamId = c.notamId || `NOTAM-R-${Math.random().toString(36).substring(2, 8)}`;
+			if (seenNotamIds.has(notamId)) return;
+			seenNotamIds.add(notamId);
+
+			const low = parseAltitudeLimit(c.LOWER_VAL);
+			const up = parseAltitudeLimit(c.UPPER_VAL);
+			const areaName = c.areaSactaName || c.itemA || 'En Route Corridor';
+
+			notams.push({
+				id: notamId,
+				location: c.areaSactaName || c.itemA || 'EN ROUTE',
+				validFrom: parseIsoDate(c.itemB),
+				validTo: parseIsoDate(c.itemC),
+				qCode: c.qcode || '',
+				purpose: 'En Route Information',
+				lowerLimitFt: low.ft ?? undefined,
+				upperLimitFt: up.ft ?? undefined,
+				text: c.itemE || '',
+				summary: `${areaName} (En Route Advisory)`,
+				severity: 'INFO'
+			});
+		});
+
+		// Informational aerodrome NOTAMs (general airport advisories)
+		(notamData.all_aerodrome_notams || []).forEach((c: any) => {
+			const notamId = c.notamId || `NOTAM-AD-${Math.random().toString(36).substring(2, 8)}`;
+			if (seenNotamIds.has(notamId)) return;
+			seenNotamIds.add(notamId);
+
+			const low = parseAltitudeLimit(c.LOWER_VAL);
+			const up = parseAltitudeLimit(c.UPPER_VAL);
+			const adCode = (c.itemA || 'AERODROME').toUpperCase();
+
+			const dep = (input.profile.depIcao || '').toUpperCase();
+			const dest = (input.profile.destIcao || '').toUpperCase();
+			const alts = (input.profile.altIcaos || []).map((a) => a.toUpperCase());
+
+			const roleDesc =
+				adCode === dep
+					? 'Departure'
+					: adCode === dest
+						? 'Destination'
+						: alts.includes(adCode)
+							? 'Alternate'
+							: 'Aerodrome';
+
+			notams.push({
+				id: notamId,
+				location: adCode,
+				validFrom: parseIsoDate(c.itemB),
+				validTo: parseIsoDate(c.itemC),
+				qCode: c.qcode || '',
+				purpose: `${roleDesc} Information`,
+				lowerLimitFt: low.ft !== null && low.ft > 0 ? low.ft : undefined,
+				upperLimitFt: up.ft !== null && up.ft < 99900 ? up.ft : undefined,
+				text: c.itemE || '',
+				summary: `${adCode} (${roleDesc} Advisory)`,
+				severity: 'INFO'
 			});
 		});
 
