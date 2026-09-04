@@ -29,11 +29,13 @@ def test_segmented_route(*_):
   # point 1 is the first point in the route
   assert table[1][4] == 2500
   # point 5 is the latest point in the first segment
-  assert table[5][4] == 3500   
+  # make sure the last point from the first segment appears on the table
+  assert table[6][0] == 'Puente Genil'
+  assert table[6][4] == 3500   
   # point 6 is the first point in the second segment
   assert table[6][4] == 3500
-  # point 9 is the latest point in the route
-  assert table[10][4] == 2000
+  # last row in the table is is the latest point in the route
+  assert table[-2][4] == 2000
 
 
 def test_mismatched_lengths():
