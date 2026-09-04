@@ -91,7 +91,6 @@
 					<th class="px-2 py-1">Leg</th>
 					<th class="px-2 py-1">Waypoint</th>
 					<th class="px-2 py-1">TC</th>
-					<th class="px-2 py-1">WCA</th>
 					<th class="px-2 py-1">TH</th>
 					<th class="px-2 py-1">Wind</th>
 					<th class="px-2 py-1">Alt (ft)</th>
@@ -108,7 +107,6 @@
 						<td class="px-2 py-1 font-bold">{leg.legIndex}</td>
 						<td class="px-2 py-1">{leg.fromName}</td>
 						<td class="px-2 py-1">{Math.round(leg.trueCourseDeg)}°</td>
-						<td class="px-2 py-1">{leg.wcaDeg > 0 ? `+${leg.wcaDeg}` : leg.wcaDeg}°</td>
 						<td class="px-2 py-1 font-bold">{Math.round(leg.trueHeadingDeg)}°</td>
 						<td class="px-2 py-1">{Math.round(leg.windDirDeg)}°/{Math.round(leg.windSpeedKt)}kt</td>
 						<td class="px-2 py-1">{leg.altitudeFt}</td>
@@ -122,7 +120,7 @@
 				<tr class="border-t-2 border-black bg-gray-100 font-bold">
 					<td class="px-2 py-1.5">Σ</td>
 					<td class="px-2 py-1.5 uppercase">Total En Route</td>
-					<td colspan="7" class="px-2 py-1.5"></td>
+					<td colspan="6" class="px-2 py-1.5"></td>
 					<td class="px-2 py-1.5">{calculationStore.totalDistanceNm.toFixed(1)} NM</td>
 					<td class="px-2 py-1.5">{calculationStore.totalFlightTimeMinutes.toFixed(1)} min</td>
 					<td class="px-2 py-1.5"></td>

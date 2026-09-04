@@ -129,7 +129,6 @@
 					<th scope="col" class="px-3 py-2.5 text-left">{m.navlog_leg()}</th>
 					<th scope="col" class="px-3 py-2.5 text-left">{m.navlog_fix()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_tc()}</th>
-					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_wca()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_th()}</th>
 					<th scope="col" class="px-3 py-2.5 text-left">{m.navlog_wind()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_alt()}</th>
@@ -143,7 +142,7 @@
 			<tbody class="divide-y divide-slate-800/60">
 				{#if calculationStore.navLog.length === 0}
 					<tr>
-						<td colspan="12" class="py-8 text-center text-slate-500 italic">
+						<td colspan="11" class="py-8 text-center text-slate-500 italic">
 							{m.navlog_empty()}
 						</td>
 					</tr>
@@ -167,9 +166,6 @@
 							</td>
 							<td class="px-3 py-2 text-right text-slate-200 tabular-nums"
 								>{Math.round(leg.trueCourseDeg)}°</td
-							>
-							<td class="px-3 py-2 text-right text-slate-300 tabular-nums"
-								>{leg.wcaDeg > 0 ? `+${leg.wcaDeg}` : leg.wcaDeg}°</td
 							>
 							<td class="px-3 py-2 text-right font-semibold text-slate-100 tabular-nums"
 								>{Math.round(leg.trueHeadingDeg)}°</td
@@ -198,7 +194,6 @@
 						<td class="px-3 py-2.5 font-sans tracking-wider text-slate-300 uppercase"
 							>{m.navlog_total()}</td
 						>
-						<td class="px-3 py-2.5 text-slate-600">—</td>
 						<td class="px-3 py-2.5 text-slate-600">—</td>
 						<td class="px-3 py-2.5 text-slate-600">—</td>
 						<td class="px-3 py-2.5 text-slate-600">—</td>
