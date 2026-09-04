@@ -154,7 +154,7 @@ def generate_navigation_report(
         round(gs),
         round(dist_nm),
         ete,
-        flight_start_date,
+        flight_start_date.strftime('%H:%M'),
     ])
     i += 1
 
