@@ -201,10 +201,10 @@
 		<!-- Collapsible Advanced Performance Parameters -->
 		{#if isPerformanceExpanded}
 			<div class="space-y-3 pt-1">
-				<!-- Climb & Departure Parameters -->
+				<!-- Climb Parameters -->
 				<div class="space-y-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2.5">
-					<div class="text-[11px] font-semibold text-cyan-400">Climb & Departure</div>
-					<div class="grid grid-cols-3 gap-2">
+					<div class="text-[11px] font-semibold text-cyan-400">Climb</div>
+					<div class="grid grid-cols-2 gap-2">
 						<div>
 							<label for="vy-input" class="mb-0.5 block text-[10px] text-slate-400"
 								>{m.label_vy()}</label
@@ -243,32 +243,13 @@
 								>
 							</div>
 						</div>
-
-						<div>
-							<label for="initial-alt-input" class="mb-0.5 block text-[10px] text-slate-400">
-								{m.label_dep_alt()}
-							</label>
-							<div class="relative flex items-center">
-								<input
-									id="initial-alt-input"
-									type="number"
-									step="100"
-									bind:value={flightPlanStore.profile.initialAlt}
-									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
-								/>
-								<span
-									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
-									>ft</span
-								>
-							</div>
-						</div>
 					</div>
 				</div>
 
 				<!-- Cruise & Descent Parameters -->
 				<div class="space-y-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2.5">
 					<div class="text-[11px] font-semibold text-cyan-400">Cruise & Descent</div>
-					<div class="grid grid-cols-3 gap-2">
+					<div class="grid grid-cols-2 gap-2">
 						<div>
 							<label for="tas-input" class="mb-0.5 block text-[10px] text-slate-400"
 								>{m.label_tas()}</label
@@ -304,25 +285,6 @@
 								<span
 									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
 									>fpm</span
-								>
-							</div>
-						</div>
-
-						<div>
-							<label for="arrival-alt-input" class="mb-0.5 block text-[10px] text-slate-400">
-								{m.label_arr_alt()}
-							</label>
-							<div class="relative flex items-center">
-								<input
-									id="arrival-alt-input"
-									type="number"
-									step="100"
-									bind:value={flightPlanStore.profile.arrivalAlt}
-									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
-								/>
-								<span
-									class="pointer-events-none absolute right-1.5 font-mono text-[10px] text-slate-400"
-									>ft</span
 								>
 							</div>
 						</div>
@@ -401,6 +363,31 @@
 				</div>
 
 				<div>
+					<label for="initial-alt-input" class="mb-1 block text-[11px] font-medium text-slate-400">
+						{m.label_dep_alt()}
+					</label>
+					<div class="relative flex items-center">
+						<input
+							id="initial-alt-input"
+							type="number"
+							step="100"
+							bind:value={flightPlanStore.profile.initialAlt}
+							oninput={(e) =>
+								flightPlanStore.updateProfile({
+									initialAlt: Number((e.target as HTMLInputElement).value)
+								})}
+							class="w-full rounded-md border border-slate-700 bg-slate-950 py-1.5 pr-7 pl-2.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
+						/>
+						<span
+							class="pointer-events-none absolute right-2 font-mono text-[10px] text-slate-400"
+							>ft</span
+						>
+					</div>
+				</div>
+			</div>
+
+			<div class="grid grid-cols-2 gap-2">
+				<div>
 					<label for="dest-input" class="mb-1 block text-[11px] font-medium text-slate-400">
 						{m.label_dest_icao()}
 					</label>
@@ -415,6 +402,29 @@
 							})}
 						class="w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 font-mono text-xs text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-hidden"
 					/>
+				</div>
+
+				<div>
+					<label for="arrival-alt-input" class="mb-1 block text-[11px] font-medium text-slate-400">
+						{m.label_arr_alt()}
+					</label>
+					<div class="relative flex items-center">
+						<input
+							id="arrival-alt-input"
+							type="number"
+							step="100"
+							bind:value={flightPlanStore.profile.arrivalAlt}
+							oninput={(e) =>
+								flightPlanStore.updateProfile({
+									arrivalAlt: Number((e.target as HTMLInputElement).value)
+								})}
+							class="w-full rounded-md border border-slate-700 bg-slate-950 py-1.5 pr-7 pl-2.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
+						/>
+						<span
+							class="pointer-events-none absolute right-2 font-mono text-[10px] text-slate-400"
+							>ft</span
+						>
+					</div>
 				</div>
 			</div>
 
