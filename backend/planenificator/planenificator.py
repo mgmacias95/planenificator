@@ -4,6 +4,7 @@ of coordinates defined in a KML file.
 
 import csv
 import datetime
+import itertools
 import logging
 import time
 from geopy.distance import geodesic
@@ -51,27 +52,36 @@ def generate_navigation_report(
 
   total_traveled_distance, total_time = 0, 0
   # use a flag to control wether we are climbing or not
-  is_climbing = True
+  is_climbing = initial_alt < cruise_alt
+  # and use another flag to check when the descend starts
+  needs_descending = arrival_alt < cruise_alt
+  
   # compute top of climb
-  climb_time = helpers.calculate_top_time(
+  climb_time = helpers.calculate_top_of_climb(
       initial_alt=initial_alt,
       cruise_alt=cruise_alt,
       rate=rate_of_climb,
   )
-  # compute top of descend
-  descend_time = helpers.calculate_top_time(
-      initial_alt=arrival_alt,
-      cruise_alt=cruise_alt,
-      rate=rate_of_descent,
-  )
+
+  if needs_descending:
+    # this data will only be used for descending
+    total_distance_nm = sum(
+        geodesic(p1, p2).nautical for p1, p2 in itertools.pairwise(coords)
+    )
+    descent_distance = helpers.calculate_top_of_descent(
+        arrival_alt=arrival_alt,
+        cruise_alt=cruise_alt,
+        total_distance=total_distance_nm,
+    )
 
   semicircular_warnings = []
-  for i in range(len(coords) - 1):
+  limit = len(coords) - 1
+  i = 0
+  while i < limit:
     p1, p2 = coords[i], coords[i+1]
 
     # compute distance between the current and the next waypoint
     dist_nm = geodesic(p1, p2).nautical
-    total_traveled_distance += dist_nm
 
     current_altitude = initial_alt if is_climbing else cruise_alt
     met = meteo.fetch_meteo(
@@ -104,16 +114,36 @@ def generate_navigation_report(
 
     # compute estimated time between the current and the next waypoint
     ete = helpers.calculate_leg_ete(dist_nm, gs)
-    flight_start_date += datetime.timedelta(minutes=ete)
-    total_time += ete
+    wind_str = f"{met.wind_direction:.0f}° / {met.wind_speed:.1f} kt"
 
     # check if we reached the TOC or not
-    if is_climbing and total_time >= climb_time:
+    if is_climbing and total_time + ete  >= climb_time:
       logging.debug('Reached TOC')
       is_climbing = False
-      point_names[i+1] += ' (TOC)'
+      point_names.insert(i + 1, 'TOC')
+      # recompute the distance because an intermediate TOC point will be added
+      # between p1 and p2: p1 - TOC - p2
+      dist_nm = (gs * abs(total_time - climb_time)) / 60
+      ete = helpers.calculate_leg_ete(dist_nm, gs)
+      # compute the exact coordinates where the TOC will be reached
+      dest = geodesic(nautical=dist_nm).destination((p1[0], p1[1]), true_course)
+      coords.insert(i + 1, (dest.latitude, dest.longitude))
+      limit += 1
+    elif needs_descending and total_traveled_distance + dist_nm >= descent_distance:
+      logging.debug('Reached TOD')
+      needs_descending = False
+      point_names.insert(i + 1, 'TOD')
+      dist_nm = total_distance_nm - descent_distance
+      ete = helpers.calculate_leg_ete(dist_nm, gs)
+      # compute the exact coordinates where the TOD will be reached
+      dest = geodesic(nautical=dist_nm).destination((p1[0], p1[1]), true_course)
+      coords.insert(i + 1, (dest.latitude, dest.longitude))
+      limit += 1
+  
+    flight_start_date += datetime.timedelta(minutes=ete)
+    total_traveled_distance += dist_nm
+    total_time += ete
 
-    wind_str = f"{met.wind_direction:.0f}° / {met.wind_speed:.1f} kt"
     table.append([
         point_names[i],
         round(true_course),
@@ -126,22 +156,8 @@ def generate_navigation_report(
         ete,
         flight_start_date,
     ])
+    i += 1
 
-  # calculate top of descent, this needs to be done in the end because
-  # we need to know the total travel time.
-  logging.debug(f'{total_time=} {descend_time=}')
-  is_descending = True
-  time_to_start_descent = flight_start_date - datetime.timedelta(minutes=descend_time)
-  logging.debug('Time to start descent: %s', time_to_start_descent)
-
-  for row in reversed(table):
-    if is_descending and row[-1] <= time_to_start_descent: 
-      logging.debug('Reached TOD')
-      row[0] += ' (TOD)'
-      is_descending = False
-    # pretty print the ETA showing only the time and minutes (assuming the
-    # flight does not take more than a day)
-    row[-1] = row[-1].strftime('%H:%M')
   # update the altitude of the last row to display the altitude in which 
   # the route will be finished.
   table[-1][4] = arrival_alt
