@@ -245,7 +245,6 @@ export class PyodideService implements IPyodideService {
 
 			if (segWps.length >= 2) {
 				const kmlFileName = `segment_${idx + 1}.kml`;
-				const coordsStr = segWps.map((wp: Waypoint) => `${wp.lng},${wp.lat},0`).join(' ');
 				const placemarksXml = segWps
 					.map(
 						(wp: Waypoint) => `    <Placemark>
@@ -262,14 +261,6 @@ export class PyodideService implements IPyodideService {
   <Document>
     <name>Segment ${idx + 1}</name>
 ${placemarksXml}
-    <Placemark>
-      <name>Segment ${idx + 1} Path</name>
-      <LineString>
-        <coordinates>
-          ${coordsStr}
-        </coordinates>
-      </LineString>
-    </Placemark>
   </Document>
 </kml>`;
 				this.pyodide!.FS.writeFile(kmlFileName, kmlContent);
