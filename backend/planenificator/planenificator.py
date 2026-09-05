@@ -153,7 +153,7 @@ def generate_navigation_report(
         speed,
         round(gs),
         round(dist_nm),
-        ete,
+        helpers.float_minutes_to_string(ete),
         flight_start_date.strftime('%H:%M'),
     ])
     i += 1
