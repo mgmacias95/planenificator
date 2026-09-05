@@ -8,6 +8,8 @@ export class CalculationState {
 	notams = $state<NotamAlert[]>([]);
 	totalDistanceNm = $state<number>(0);
 	totalFlightTimeMinutes = $state<number>(0);
+	totalEte = $state<string>('');
+	finalEta = $state<string>('');
 	isCalculating = $state<boolean>(false);
 	statusMessage = $state<string>('');
 	error = $state<string | null>(null);
@@ -46,6 +48,8 @@ export class CalculationState {
 			this.notams = result.notams;
 			this.totalDistanceNm = result.totalDistanceNm;
 			this.totalFlightTimeMinutes = result.totalFlightTimeMinutes;
+			this.totalEte = result.totalEte;
+			this.finalEta = result.finalEta;
 			this.warnings = result.warnings;
 			this.calculatedFingerprint = flightPlanStore.calculationFingerprint();
 			this.hasCalculated = true;
@@ -67,6 +71,8 @@ export class CalculationState {
 		this.notams = [];
 		this.totalDistanceNm = 0;
 		this.totalFlightTimeMinutes = 0;
+		this.totalEte = '';
+		this.finalEta = '';
 		this.error = null;
 		this.warnings = [];
 		this.hasCalculated = false;

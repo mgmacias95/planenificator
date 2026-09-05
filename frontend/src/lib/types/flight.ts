@@ -126,9 +126,11 @@ export interface NavLogEntry {
 	wcaDeg: number; // Wind correction angle (+/- degrees)
 	trueHeadingDeg: number; // 0-359°
 	tasKt: number;
+	iasKt?: number;
 	groundSpeedKt: number; // Knots
 	distanceNm: number; // Nautical miles
-	eteMinutes: number; // Estimated Time Enroute for leg
+	ete: string; // ETE string as received from backend (e.g. '5m 40s')
+	eteMinutes?: number; // Optional numeric minutes for compatibility
 	etaUtc: string; // Estimated Time of Arrival (HH:MMZ)
 	notes?: string; // Transition notes (e.g. 'TOC', 'TOD', 'Cruise level change')
 }
@@ -174,5 +176,7 @@ export interface SavedFlightPlan {
 		destIcao: string;
 		totalDistanceNm: number;
 		totalEteMinutes: number;
+		totalEteFormatted?: string;
+		finalEtaUtc?: string;
 	};
 }

@@ -78,7 +78,7 @@
 		<div class="rounded-md border border-emerald-200 bg-emerald-50/90 p-2.5">
 			<div class="text-[10px] font-bold tracking-wider text-emerald-700 uppercase">TOTAL TIME / DIST</div>
 			<div class="mt-0.5 text-sm font-black text-emerald-950">
-				{calculationStore.totalFlightTimeMinutes.toFixed(1)} min / {calculationStore.totalDistanceNm.toFixed(1)} NM
+				{calculationStore.totalEte} / {calculationStore.totalDistanceNm.toFixed(1)} NM
 			</div>
 		</div>
 
@@ -139,7 +139,7 @@
 						<th class="border-x border-sky-700 bg-sky-800 px-2 py-1.5 text-right font-black text-white">TH</th>
 						<th class="px-2 py-1.5 text-center">Wind</th>
 						<th class="px-2 py-1.5 text-right">Alt (ft)</th>
-						<th class="px-2 py-1.5 text-right">TAS</th>
+						<th class="px-2 py-1.5 text-right">IAS</th>
 						<th class="border-x border-slate-700 bg-slate-800 px-2 py-1.5 text-right font-black text-amber-300">GS</th>
 						<th class="px-2 py-1.5 text-right">Dist (NM)</th>
 						<th class="px-2 py-1.5 text-right">ETE</th>
@@ -194,7 +194,7 @@
 									{leg.altitudeFt}
 								</td>
 								<td class="px-2 py-1.5 text-right tabular-nums text-slate-700">
-									{leg.tasKt}
+									{leg.iasKt ?? leg.tasKt}
 								</td>
 								<td class="border-x border-amber-100/60 bg-amber-50/50 px-2 py-1.5 text-right font-black tabular-nums text-slate-900">
 									{leg.groundSpeedKt}
@@ -203,7 +203,7 @@
 									{leg.distanceNm.toFixed(1)}
 								</td>
 								<td class="px-2 py-1.5 text-right tabular-nums text-slate-700">
-									{leg.eteMinutes.toFixed(1)}m
+									{leg.ete}
 								</td>
 								<td class="px-2 py-1.5 text-right font-bold tabular-nums text-slate-900">
 									{leg.etaUtc}
@@ -221,9 +221,11 @@
 								{calculationStore.totalDistanceNm.toFixed(1)} NM
 							</td>
 							<td class="px-2 py-2 text-right font-black tabular-nums text-sky-950">
-								{calculationStore.totalFlightTimeMinutes.toFixed(1)} min
+								{calculationStore.totalEte}
 							</td>
-							<td class="px-2 py-2"></td>
+							<td class="px-2 py-2 text-right font-black tabular-nums text-sky-950">
+								{calculationStore.finalEta || ''}
+							</td>
 						</tr>
 					{/if}
 				</tbody>

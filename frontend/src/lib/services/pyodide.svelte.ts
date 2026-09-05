@@ -43,6 +43,8 @@ export interface PyodideCalculationResult {
 	notams: NotamAlert[];
 	totalDistanceNm: number;
 	totalFlightTimeMinutes: number;
+	totalEte: string;
+	finalEta: string;
 	warnings: string[];
 	rawTextOutput?: string;
 }
@@ -339,10 +341,14 @@ ${placemarksXml}
 		const navLog: NavLogEntry[] = [];
 		let totalDistanceNm = 0;
 		let totalFlightTimeMinutes = 0;
+		let totalEte = '';
+		let finalEta = '';
 
 		rows.forEach((row, idx) => {
 			if (row[0] === 'Total') {
 				totalDistanceNm = parseFloat(row[7]) || 0;
+				totalEte = row[8] || '';
+				finalEta = row[9] || '';
 				totalFlightTimeMinutes = parseFloat(row[8]) || 0;
 				return;
 			}
@@ -357,10 +363,10 @@ ${placemarksXml}
 			const windDir = parseFloat(windParts[0]) || 0;
 			const windSpeed = parseFloat(windParts[1]) || 0;
 			const altitude = parseInt(row[4], 10) || 0;
-			const tas = parseInt(row[5], 10) || 0;
+			const ias = parseInt(row[5], 10) || 0;
 			const gs = parseInt(row[6], 10) || 0;
 			const legDist = parseFloat(row[7]) || 0;
-			const ete = parseFloat(row[8]) || 0;
+			const ete = row[8] || '';
 			const eta = row[9] || '';
 
 			const wca = Math.round(trueHeading - trueCourse);
@@ -386,10 +392,12 @@ ${placemarksXml}
 				windDirDeg: windDir,
 				wcaDeg: wca,
 				trueHeadingDeg: trueHeading,
-				tasKt: tas,
+				tasKt: ias,
+				iasKt: ias,
 				groundSpeedKt: gs,
 				distanceNm: legDist,
-				eteMinutes: ete,
+				ete,
+				eteMinutes: parseFloat(ete) || 0,
 				etaUtc: eta,
 				notes: fromName.includes('TOC')
 					? 'Top of Climb'
@@ -554,6 +562,10 @@ ${placemarksXml}
 
 		const warnings = [...(notamData.semicircular_warnings || [])];
 
+		if (!finalEta && navLog.length > 0) {
+			finalEta = navLog[navLog.length - 1].etaUtc;
+		}
+
 		return {
 			success: true,
 			navLog,
@@ -561,6 +573,8 @@ ${placemarksXml}
 			notams,
 			totalDistanceNm,
 			totalFlightTimeMinutes,
+			totalEte,
+			finalEta,
 			warnings
 		};
 	}

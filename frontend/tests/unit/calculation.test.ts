@@ -19,8 +19,10 @@ describe('Navigation Log Calculation and Formatting', () => {
 			wcaDeg: -5,
 			trueHeadingDeg: 20,
 			tasKt: 80,
+			iasKt: 80,
 			groundSpeedKt: 72,
 			distanceNm: 172.5,
+			ete: '143m 45s',
 			eteMinutes: 143.75,
 			etaUtc: '12:24'
 		};
@@ -28,7 +30,8 @@ describe('Navigation Log Calculation and Formatting', () => {
 		expect(entry.trueHeadingDeg).toBe(20);
 		expect(entry.groundSpeedKt).toBe(72);
 		expect(entry.distanceNm).toBeGreaterThan(0);
-		expect(entry.eteMinutes).toBeCloseTo(143.75, 1);
+		expect(entry.ete).toBe('143m 45s');
+		expect(entry.iasKt).toBe(80);
 	});
 
 	it('should detect semicircular rule compliance for eastbound vs westbound tracks', () => {
@@ -82,13 +85,49 @@ describe('Navigation Log Calculation and Formatting', () => {
 			wcaDeg: -4,
 			trueHeadingDeg: 51,
 			tasKt: 70,
+			iasKt: 70,
 			groundSpeedKt: 78,
 			distanceNm: 32.4,
+			ete: '24m 54s',
 			eteMinutes: 24.9,
 			etaUtc: '10:24'
 		};
 
 		expect(leg1.fromName).toBe('LECU - Cuatro Vientos');
 		expect(leg1.toName).toBe('Guadalajara');
+		expect(leg1.ete).toBe('24m 54s');
+	});
+
+	it('should handle backend navlog report formatting with IAS, string ETE, and total arrival time', () => {
+		const backendReportRow = [
+			'Castillo Almodovar',
+			'268',
+			'260',
+			'181° / 9.8 kt',
+			'2500',
+			'70',
+			'69',
+			'4',
+			'3m 29s',
+			'11:32'
+		];
+
+		const totalRow = [
+			'Total',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'98.55',
+			'72m 53s',
+			'12:41'
+		];
+
+		expect(backendReportRow[5]).toBe('70'); // IAS
+		expect(backendReportRow[8]).toBe('3m 29s'); // ETE string
+		expect(totalRow[8]).toBe('72m 53s'); // Total ETE string
+		expect(totalRow[9]).toBe('12:41'); // Final ETA in totals
 	});
 });
