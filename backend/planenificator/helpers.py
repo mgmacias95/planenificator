@@ -138,3 +138,9 @@ def check_semi_circular_rule(course: float, altitude: int):
       (90 <= course < 270 and is_odd) or
       ((course >= 270 or course < 90) and is_even)
   )
+
+
+def float_minutes_to_string(m: float) -> str:
+  """Convers 5.5 to 5m 30s to improve readability."""
+  minutes, seconds = divmod(round(m * 60), 60)
+  return f'{minutes}m {seconds:02d}s'

@@ -3,6 +3,7 @@
 import datetime
 from typing import List, Tuple
 from planenificator import planenificator
+from planenificator import helpers
 
 
 def generate_multi_segment_navigation_report(
@@ -51,7 +52,7 @@ def generate_multi_segment_navigation_report(
 
   combined_table = [[
       'Waypoint', 'True course', 'Heading', 'Wind', 'Altitude',
-      'TAS', 'GS', 'Leg', 'ETE', 'ETA'
+      'IAS', 'GS', 'Leg', 'ETE', 'ETA'
   ]]
 
   merged_notam_data = {
@@ -93,7 +94,11 @@ def generate_multi_segment_navigation_report(
           merged_notam_data[key].append(item)
 
   combined_table.append(
-      ['Total', '', '', '', '', '', '', round(total_dist, 2), round(total_time, 2), '']
+      [
+          'Total', '', '', '', '', '', '', round(total_dist, 2),
+          helpers.float_minutes_to_string(total_time),
+          current_date.strftime('%H:%M'),
+      ]
   )
 
   return combined_table, merged_notam_data
