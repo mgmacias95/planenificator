@@ -243,6 +243,35 @@ select {
 		break-inside: avoid !important;
 		page-break-inside: avoid !important;
 	}
+	.print-vac-page {
+		break-before: page !important;
+		page-break-before: always !important;
+		break-after: avoid !important;
+		page-break-after: avoid !important;
+		break-inside: avoid !important;
+		page-break-inside: avoid !important;
+		display: flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		width: 100% !important;
+		height: 270mm !important;
+		max-height: 270mm !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		box-sizing: border-box !important;
+		overflow: hidden !important;
+	}
+	.print-vac-image {
+		display: block !important;
+		max-width: 100% !important;
+		max-height: 270mm !important;
+		width: auto !important;
+		height: auto !important;
+		object-fit: contain !important;
+		margin: auto !important;
+		border: none !important;
+		box-shadow: none !important;
+	}
 	@page {
 		size: A4 portrait;
 		margin: 1cm;

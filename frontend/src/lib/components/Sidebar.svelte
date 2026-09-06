@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import FlightProfileForm from './FlightProfileForm.svelte';
 	import WaypointList from './WaypointList.svelte';
 	import ChartManager from './ChartManager.svelte';
@@ -9,6 +9,7 @@
 	import Icon from './Icon.svelte';
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
 	import { calculationStore } from '$lib/state/calculation.svelte';
+	import { vacBriefingStore } from '$lib/state/vac-briefing.svelte';
 	import { pyodideService } from '$lib/services/pyodide.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -58,8 +59,29 @@
 		requestAnimationFrame(() => document.getElementById(`${activeTab}-tab`)?.focus());
 	}
 
-	function handlePrint() {
-		window.print();
+	let isPrinting = $state(false);
+
+	async function handlePrint() {
+		if (isPrinting) return;
+		isPrinting = true;
+		try {
+			const dep = flightPlanStore.profile.depIcao;
+			const dest = flightPlanStore.profile.destIcao;
+			const alts = flightPlanStore.profile.altIcaos;
+			if (dep || dest || (alts && alts.length > 0)) {
+				await vacBriefingStore.ensureLoaded(dep, dest, alts);
+			}
+			await tick();
+			// Ensure images are fully decoded in browser before opening print dialog
+			const vacImages = Array.from(document.querySelectorAll<HTMLImageElement>('.print-vac-image'));
+			if (vacImages.length > 0) {
+				await Promise.all(vacImages.map((img) => img.decode().catch(() => {})));
+			}
+			await new Promise((r) => setTimeout(r, 100));
+			window.print();
+		} finally {
+			isPrinting = false;
+		}
 	}
 
 	function clampPlannerSize(value: number, wide: boolean) {
@@ -200,11 +222,15 @@
 				<button
 					type="button"
 					onclick={handlePrint}
-					disabled={!calculationStore.hasCalculated || calculationStore.isStale}
+					disabled={!calculationStore.hasCalculated || calculationStore.isStale || isPrinting}
 					class="flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border border-slate-700 bg-slate-800 p-2 text-slate-300 shadow-xs transition-colors hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 					title="Print or Export PDF Briefing"
 				>
-					<Icon name="printer" class="h-3.5 w-3.5" />
+					{#if isPrinting || vacBriefingStore.isLoading}
+						<Icon name="loader" class="h-3.5 w-3.5 animate-spin text-cyan-400" />
+					{:else}
+						<Icon name="printer" class="h-3.5 w-3.5" />
+					{/if}
 					<span class="sr-only">{m.btn_print()}</span>
 				</button>
 
