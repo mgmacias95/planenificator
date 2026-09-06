@@ -272,3 +272,7 @@ export class FlightPlanState {
 }
 
 export const flightPlanStore = new FlightPlanState();
+
+if (typeof window !== 'undefined') {
+	(window as any).__flightPlanStore = flightPlanStore;
+}
