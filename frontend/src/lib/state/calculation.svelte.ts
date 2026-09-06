@@ -82,7 +82,3 @@ export class CalculationState {
 }
 
 export const calculationStore = new CalculationState();
-
-if (typeof window !== 'undefined') {
-	(window as any).__calculationStore = calculationStore;
-}

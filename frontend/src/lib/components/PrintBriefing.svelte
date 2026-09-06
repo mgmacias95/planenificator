@@ -18,7 +18,7 @@
 </script>
 
 <div class="print-only font-sans text-xs text-slate-800">
-	<div class="space-y-6 bg-white">
+	<div class="space-y-6 bg-white p-6">
 		<!-- Document Header -->
 	<div class="flex items-center justify-between border-b-2 border-sky-800 pb-3">
 		<div class="flex items-center gap-3">
@@ -150,7 +150,7 @@
 
 	<!-- Navigation Log Table -->
 	<div class="space-y-1.5">
-		<div class="print-avoid-break-after flex items-center justify-between border-b-2 border-slate-800 pb-1.5">
+		<div class="flex items-center justify-between border-b-2 border-slate-800 pb-1.5">
 			<h2 class="text-xs font-black tracking-wider text-slate-900 uppercase">Navigation Log</h2>
 			<span class="font-mono text-[10px] font-semibold text-slate-500">
 				{calculationStore.navLog.length} Legs · Navigational Waypoint Calculations
@@ -295,8 +295,8 @@
 
 	<!-- Operational NOTAM Briefing (Conflicts & Safety Warnings) -->
 	{#if conflictNotams.length > 0}
-		<div class="space-y-2 {conflictNotams.length <= 2 ? 'print-avoid-break' : ''}">
-			<div class="print-avoid-break-after flex items-center justify-between border-b-2 border-rose-600 pb-1">
+		<div class="space-y-2">
+			<div class="flex items-center justify-between border-b-2 border-rose-600 pb-1">
 				<div class="flex items-center gap-2">
 					<span
 						class="flex h-5 w-5 items-center justify-center rounded bg-rose-600 text-xs font-bold text-white select-none"
@@ -362,7 +362,7 @@
 	<!-- Informational NOTAMs Briefing (Separate Page) -->
 	{#if infoNotams.length > 0}
 		<div class="print-page-break pt-4" style="break-before: page; page-break-before: always;">
-			<div class="print-avoid-break-after mb-3 flex items-center justify-between border-b-2 border-sky-700 pb-2">
+			<div class="mb-3 flex items-center justify-between border-b-2 border-sky-700 pb-2">
 				<div class="flex items-center gap-2">
 					<span
 						class="flex h-6 w-6 items-center justify-center rounded bg-sky-800 text-xs leading-none font-bold text-white select-none"
