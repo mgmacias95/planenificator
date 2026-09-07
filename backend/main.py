@@ -18,7 +18,7 @@ def main():
   parser.add_argument('--initial-alt', type=int, default=2500, help='Initial altitude in feet')
   parser.add_argument('--arrival-alt', type=int, default=2000, help='Arrival altitude in feet')
   parser.add_argument('--cruise-alts', type=int, nargs='+', default=[5500], help='Cruise altitudes in feet')
-  parser.add_argument('--tas', type=int, default=80, help='True airspeed in knots')
+  parser.add_argument('--ias', type=int, default=80, help='Indicated airspeed in knots')
   parser.add_argument('--vy', type=int, default=70, help='Best rate of climb speed in knots')
   parser.add_argument('--rate-of-climb', type=int, default=700, help='Rate of climb in feet per minute')
   parser.add_argument('--rate-of-descent', type=int, default=500, help='Rate of descent in feet per minute')
@@ -41,7 +41,7 @@ def main():
       cruise_alts=args.cruise_alts,
       initial_alt=args.initial_alt,
       arrival_alt=args.arrival_alt,
-      tas=args.tas,
+      ias=args.ias,
       vy=args.vy,
       rate_of_climb=args.rate_of_climb,
       rate_of_descent=args.rate_of_descent,

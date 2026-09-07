@@ -28,7 +28,7 @@
 		modalMode = 'create';
 		modalInitialData = {
 			name: '',
-			cruiseTas: flightPlanStore.profile.cruiseTas,
+			cruiseIas: flightPlanStore.profile.cruiseIas,
 			climbVy: flightPlanStore.profile.climbVy,
 			climbRateFpm: flightPlanStore.profile.climbRateFpm,
 			descentRateFpm: flightPlanStore.profile.descentRateFpm
@@ -43,7 +43,7 @@
 		modalInitialData = {
 			id: current.id,
 			name: current.name,
-			cruiseTas: flightPlanStore.profile.cruiseTas,
+			cruiseIas: flightPlanStore.profile.cruiseIas,
 			climbVy: flightPlanStore.profile.climbVy,
 			climbRateFpm: flightPlanStore.profile.climbRateFpm,
 			descentRateFpm: flightPlanStore.profile.descentRateFpm
@@ -65,7 +65,7 @@
 	async function handleSaveModalProfile(data: {
 		id?: string;
 		name: string;
-		cruiseTas: number;
+		cruiseIas: number;
 		climbVy: number;
 		climbRateFpm: number;
 		descentRateFpm: number;
@@ -184,7 +184,7 @@
 			<!-- Compact Profile Summary Badges -->
 			<div class="mt-2 grid grid-cols-4 gap-1 font-mono text-[10px] text-slate-400">
 				<span class="rounded-md border border-slate-800 bg-slate-900 px-1 py-1 text-center">
-					TAS: <strong class="text-cyan-300">{flightPlanStore.profile.cruiseTas} kt</strong>
+					TAS: <strong class="text-cyan-300">{flightPlanStore.profile.cruiseIas} kt</strong>
 				</span>
 				<span class="rounded-md border border-slate-800 bg-slate-900 px-1 py-1 text-center">
 					Climb: <strong class="text-cyan-300">{flightPlanStore.profile.climbRateFpm} fpm</strong>
@@ -258,7 +258,7 @@
 								<input
 									id="tas-input"
 									type="number"
-									bind:value={flightPlanStore.profile.cruiseTas}
+									bind:value={flightPlanStore.profile.cruiseIas}
 									oninput={onPerformanceParamInput}
 									class="w-full rounded-md border border-slate-700 bg-slate-950 py-1 pr-6 pl-2 font-mono text-xs text-white focus:border-cyan-400 focus:outline-hidden"
 								/>
@@ -301,7 +301,7 @@
 									aircraftProfilesStore.saveCustomProfile({
 										id: aircraftProfilesStore.selectedProfile.id,
 										name: aircraftProfilesStore.selectedProfile.name,
-										cruiseTas: flightPlanStore.profile.cruiseTas,
+										cruiseIas: flightPlanStore.profile.cruiseIas,
 										climbVy: flightPlanStore.profile.climbVy,
 										climbRateFpm: flightPlanStore.profile.climbRateFpm,
 										descentRateFpm: flightPlanStore.profile.descentRateFpm

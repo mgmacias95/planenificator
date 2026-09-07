@@ -10,7 +10,7 @@
 		onSave: (data: {
 			id?: string;
 			name: string;
-			cruiseTas: number;
+			cruiseIas: number;
 			climbVy: number;
 			climbRateFpm: number;
 			descentRateFpm: number;
@@ -41,7 +41,7 @@
 		onSave({
 			id: initialData.id,
 			name: trimmedName,
-			cruiseTas: initialData.cruiseTas ?? 100,
+			cruiseIas: initialData.cruiseIas ?? 100,
 			climbVy: initialData.climbVy ?? 70,
 			climbRateFpm: initialData.climbRateFpm ?? 700,
 			descentRateFpm: initialData.descentRateFpm ?? 500

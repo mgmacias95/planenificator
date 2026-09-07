@@ -19,7 +19,6 @@ describe('Navigation Log Calculation and Formatting', () => {
 			wcaDeg: -5,
 			trueHeadingDeg: 20,
 			tasKt: 80,
-			iasKt: 80,
 			groundSpeedKt: 72,
 			distanceNm: 172.5,
 			ete: '143m 45s',
@@ -31,7 +30,7 @@ describe('Navigation Log Calculation and Formatting', () => {
 		expect(entry.groundSpeedKt).toBe(72);
 		expect(entry.distanceNm).toBeGreaterThan(0);
 		expect(entry.ete).toBe('143m 45s');
-		expect(entry.iasKt).toBe(80);
+		expect(entry.tasKt).toBe(80);
 	});
 
 	it('should detect semicircular rule compliance for eastbound vs westbound tracks', () => {
@@ -85,7 +84,6 @@ describe('Navigation Log Calculation and Formatting', () => {
 			wcaDeg: -4,
 			trueHeadingDeg: 51,
 			tasKt: 70,
-			iasKt: 70,
 			groundSpeedKt: 78,
 			distanceNm: 32.4,
 			ete: '24m 54s',
@@ -98,7 +96,7 @@ describe('Navigation Log Calculation and Formatting', () => {
 		expect(leg1.ete).toBe('24m 54s');
 	});
 
-	it('should handle backend navlog report formatting with IAS, string ETE, and total arrival time', () => {
+	it('should handle backend navlog report formatting with TAS, string ETE, and total arrival time', () => {
 		const backendReportRow = [
 			'Castillo Almodovar',
 			'268',
@@ -125,7 +123,7 @@ describe('Navigation Log Calculation and Formatting', () => {
 			'12:41'
 		];
 
-		expect(backendReportRow[5]).toBe('70'); // IAS
+		expect(backendReportRow[5]).toBe('70'); // TAS
 		expect(backendReportRow[8]).toBe('3m 29s'); // ETE string
 		expect(totalRow[8]).toBe('72m 53s'); // Total ETE string
 		expect(totalRow[9]).toBe('12:41'); // Final ETA in totals

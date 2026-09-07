@@ -20,7 +20,7 @@
 
 	function promptNewSegment() {
 		modalTitle = 'Add New Route Segment';
-		modalDefaultAlt = flightPlanStore.profile.cruiseTas ? 5500 : 5500;
+		modalDefaultAlt = flightPlanStore.profile.cruiseIas ? 5500 : 5500;
 		modalCallback = (alt: number) => {
 			flightPlanStore.addSegment(alt);
 			modalOpen = false;

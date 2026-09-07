@@ -281,7 +281,7 @@ ${placemarksXml}
 
 		this.pyodide.globals.set('py_kmls', this.pyodide.toPy(kmlPaths));
 		this.pyodide.globals.set('py_cruise_alts', this.pyodide.toPy(cruiseAlts));
-		this.pyodide.globals.set('py_tas', profile.cruiseTas);
+		this.pyodide.globals.set('py_ias', profile.cruiseIas);
 		this.pyodide.globals.set('py_initial_alt', profile.initialAlt);
 		this.pyodide.globals.set('py_arrival_alt', profile.arrivalAlt);
 		this.pyodide.globals.set('py_vy', profile.climbVy);
@@ -303,7 +303,7 @@ ${placemarksXml}
           cruise_alts=list(py_cruise_alts),
           initial_alt=py_initial_alt,
           arrival_alt=py_arrival_alt,
-          tas=py_tas,
+          ias=py_ias,
           vy=py_vy,
           rate_of_climb=py_climb_rate,
           rate_of_descent=py_descent_rate,
@@ -363,7 +363,7 @@ ${placemarksXml}
 			const windDir = parseFloat(windParts[0]) || 0;
 			const windSpeed = parseFloat(windParts[1]) || 0;
 			const altitude = parseInt(row[4], 10) || 0;
-			const ias = parseInt(row[5], 10) || 0;
+			const tas = parseInt(row[5], 10) || 0;
 			const gs = parseInt(row[6], 10) || 0;
 			const legDist = parseFloat(row[7]) || 0;
 			const ete = row[8] || '';
@@ -392,8 +392,7 @@ ${placemarksXml}
 				windDirDeg: windDir,
 				wcaDeg: wca,
 				trueHeadingDeg: trueHeading,
-				tasKt: ias,
-				iasKt: ias,
+				tasKt: tas,
 				groundSpeedKt: gs,
 				distanceNm: legDist,
 				ete,

@@ -92,7 +92,7 @@ python main.py --dep LEBA --dest LEBA --alt LEDE --cruise-alt 5500 --tas 80 --km
 ```text
 WARNING:root:Semi circular rule not followed for leg Villaviciosa de Córdoba (TOC) -> Espiel (true course: 48.843793, alt: 5500)
 +---------------------------+---------------+-----------+----------------+------------+-------+------+-------+---------+-------+
-| Waypoint                  |   True course |   Heading | Wind           |   Altitude |   IAS |   GS |   Leg | ETE     | ETA   |
+| Waypoint                  |   True course |   Heading | Wind           |   Altitude |   TAS |   GS |   Leg | ETE     | ETA   |
 +===========================+===============+===========+================+============+=======+======+=======+=========+=======+
 | Castillo Almodovar        |           268 |       260 | 181° / 9.8 kt  |       2500 |    70 |   69 |  4    | 3m 29s  | 11:32 |
 +---------------------------+---------------+-----------+----------------+------------+-------+------+-------+---------+-------+

@@ -24,7 +24,7 @@ export interface FlightProfile {
 	destIcao: string; // Destination ICAO or identifier (e.g. 'LEMD')
 	altIcaos: string[]; // Alternate aerodromes list (e.g. ['LETO', 'LEVS'])
 	departureTime: string; // ISO 8601 UTC timestamp or local datetime string
-	cruiseTas: number; // True Airspeed in cruise (knots, e.g. 80)
+	cruiseIas: number; // True Airspeed in cruise (knots, e.g. 80)
 	initialAlt: number; // Initial departure/takeoff altitude (feet AMSL, e.g. 300)
 	arrivalAlt: number; // Destination pattern/circuit altitude (feet AMSL, e.g. 2000)
 	climbVy: number; // Best rate of climb airspeed (knots, e.g. 70)
@@ -35,7 +35,7 @@ export interface FlightProfile {
 export interface AircraftPerformanceProfile {
 	id: string; // e.g. 'c172' or 'prof_1724601234'
 	name: string; // Display title (e.g. 'Cessna 172 Skyhawk')
-	cruiseTas: number; // True Airspeed in cruise (knots)
+	cruiseIas: number; // True Airspeed in cruise (knots)
 	climbVy: number; // Best rate of climb airspeed (knots)
 	climbRateFpm: number; // Climb rate (fpm)
 	descentRateFpm: number; // Descent rate (fpm)
@@ -48,7 +48,7 @@ export const DEFAULT_AIRCRAFT_PRESETS: AircraftPerformanceProfile[] = [
 	{
 		id: 'lsa',
 		name: 'Ultralight / LSA (Default)',
-		cruiseTas: 80,
+		cruiseIas: 80,
 		climbVy: 70,
 		climbRateFpm: 700,
 		descentRateFpm: 500,
@@ -57,7 +57,7 @@ export const DEFAULT_AIRCRAFT_PRESETS: AircraftPerformanceProfile[] = [
 	{
 		id: 'c172',
 		name: 'Cessna 172 Skyhawk',
-		cruiseTas: 110,
+		cruiseIas: 110,
 		climbVy: 74,
 		climbRateFpm: 700,
 		descentRateFpm: 500,
@@ -66,7 +66,7 @@ export const DEFAULT_AIRCRAFT_PRESETS: AircraftPerformanceProfile[] = [
 	{
 		id: 'pa28',
 		name: 'Piper PA-28 Cherokee',
-		cruiseTas: 115,
+		cruiseIas: 115,
 		climbVy: 76,
 		climbRateFpm: 650,
 		descentRateFpm: 500,
@@ -75,7 +75,7 @@ export const DEFAULT_AIRCRAFT_PRESETS: AircraftPerformanceProfile[] = [
 	{
 		id: 'c152',
 		name: 'Cessna 152',
-		cruiseTas: 90,
+		cruiseIas: 90,
 		climbVy: 67,
 		climbRateFpm: 600,
 		descentRateFpm: 500,
@@ -126,7 +126,6 @@ export interface NavLogEntry {
 	wcaDeg: number; // Wind correction angle (+/- degrees)
 	trueHeadingDeg: number; // 0-359°
 	tasKt: number;
-	iasKt?: number;
 	groundSpeedKt: number; // Knots
 	distanceNm: number; // Nautical miles
 	ete: string; // ETE string as received from backend (e.g. '5m 40s')

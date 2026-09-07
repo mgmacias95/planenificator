@@ -5,17 +5,20 @@ from planenificator import meteo
 from planenificator import segments
 
 
+@pytest.mark.parametrize('cruise_alts,initial,final', [
+    ([5500, 3500], 2500, 2000),
+    ([2500, 5500], 300, 1000),
+])
 @mock.patch('planenificator.meteo.fetch_meteo', return_value=meteo.Meteo(0, 0))
 @mock.patch('planenificator.notams_spain.fetch_notams_by_route', return_value=[])
 @mock.patch('planenificator.notams_spain.fetch_notams_by_aerodromes', return_value=[])
-@mock.patch('time.sleep', return_value=None)
-def test_segmented_route(*_):
+def test_segmented_route(m1, m2, m3, cruise_alts, initial, final):
   table, _ = segments.generate_multi_segment_navigation_report(
       kmls=['test/test_data/ruta_5500.kml', 'test/test_data/ruta_3500.kml'],
-      cruise_alts=[5500, 3500],
-      initial_alt=2500,
-      arrival_alt=2000,
-      tas=100,
+      cruise_alts=cruise_alts,
+      initial_alt=initial,
+      arrival_alt=final,
+      ias=100,
       vy=80,
       rate_of_climb=500,
       rate_of_descent=500,
@@ -27,15 +30,26 @@ def test_segmented_route(*_):
 
   # assert altitude is correctly set between the two segments
   # point 1 is the first point in the route
-  assert table[1][4] == 2500
-  # point 5 is the latest point in the first segment
-  # make sure the last point from the first segment appears on the table
-  assert table[6][0] == 'Puente Genil'
-  assert table[6][4] == 3500   
-  # point 6 is the first point in the second segment
-  assert table[6][4] == 3500
+  assert table[1][4] == initial
+
+  # if it's necessary to descend between two segments, there will be an
+  # intermediate point TOD in the table.
+  n_items_first_segment = 6 if cruise_alts[0] > cruise_alts[1] else 5
+
+  # assert each row of the first segment contains the first altitude
+  for row in table[2:n_items_first_segment]:
+    assert row[4] == cruise_alts[0], (
+        f'row {row} does not have the expected altitude of {cruise_alts[0]}'
+    )
+  
+  # assert each row of the second segment contains the second altitude
+  for row in table[n_items_first_segment:-2]:
+    assert row[4] == cruise_alts[1], (
+        f'row {row} does not have the expected altitude of {cruise_alts[1]}'
+    )
+
   # last row in the table is is the latest point in the route
-  assert table[-2][4] == 2000
+  assert table[-2][4] == final
 
 
 def test_mismatched_lengths():
