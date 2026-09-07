@@ -10,6 +10,7 @@
 	import { flightPlanStore } from '$lib/state/flight-plan.svelte';
 	import { calculationStore } from '$lib/state/calculation.svelte';
 	import { vacBriefingStore } from '$lib/state/vac-briefing.svelte';
+	import { routeMapSnapshotStore } from '$lib/state/route-map-snapshot.svelte';
 	import { pyodideService } from '$lib/services/pyodide.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -71,11 +72,16 @@
 			if (dep || dest || (alts && alts.length > 0)) {
 				await vacBriefingStore.ensureLoaded(dep, dest, alts);
 			}
+			if (flightPlanStore.waypoints.length > 0) {
+				await routeMapSnapshotStore.ensureSnapshot();
+			}
 			await tick();
 			// Ensure images are fully decoded in browser before opening print dialog
-			const vacImages = Array.from(document.querySelectorAll<HTMLImageElement>('.print-vac-image'));
-			if (vacImages.length > 0) {
-				await Promise.all(vacImages.map((img) => img.decode().catch(() => {})));
+			const printImages = Array.from(
+				document.querySelectorAll<HTMLImageElement>('.print-map-image, .print-vac-image')
+			);
+			if (printImages.length > 0) {
+				await Promise.all(printImages.map((img) => img.decode().catch(() => {})));
 			}
 			await new Promise((r) => setTimeout(r, 100));
 			window.print();

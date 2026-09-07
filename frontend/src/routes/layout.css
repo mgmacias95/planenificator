@@ -272,6 +272,13 @@ select {
 		border: none !important;
 		box-shadow: none !important;
 	}
+	.print-map-image {
+		display: block !important;
+		width: 100% !important;
+		max-height: 80mm !important;
+		object-fit: contain !important;
+		margin: 0 auto !important;
+	}
 	@page {
 		size: A4 portrait;
 		margin: 1cm;
