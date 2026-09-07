@@ -104,7 +104,7 @@
 		<div class="rounded-md border border-slate-200 bg-white p-2.5">
 			<div class="text-[10px] font-bold tracking-wider text-slate-500 uppercase">PERFORMANCE</div>
 			<div class="mt-0.5 font-medium text-slate-700">
-				TAS: <strong class="text-slate-900">{flightPlanStore.profile.cruiseTas} kt</strong> · Vy:
+				TAS: <strong class="text-slate-900">{flightPlanStore.profile.cruiseIas} kt</strong> · Vy:
 				<strong class="text-slate-900">{flightPlanStore.profile.climbVy} kt</strong>
 			</div>
 		</div>
@@ -169,7 +169,7 @@
 						>
 						<th class="px-2 py-1.5 text-center">Wind</th>
 						<th class="px-2 py-1.5 text-right">Alt (ft)</th>
-						<th class="px-2 py-1.5 text-right">IAS</th>
+						<th class="px-2 py-1.5 text-right">TAS</th>
 						<th
 							class="border-x border-slate-700 bg-slate-800 px-2 py-1.5 text-right font-black text-amber-300"
 							>GS</th
@@ -229,7 +229,7 @@
 									{leg.altitudeFt}
 								</td>
 								<td class="px-2 py-1.5 text-right text-slate-700 tabular-nums">
-									{leg.iasKt ?? leg.tasKt}
+									{leg.tasKt}
 								</td>
 								<td
 									class="border-x border-amber-100/60 bg-amber-50/50 px-2 py-1.5 text-right font-black text-slate-900 tabular-nums"

@@ -52,7 +52,7 @@ export interface FlightProfile {
   destIcao: string;           // Destination ICAO or identifier (e.g., 'LEMD')
   altIcaos: string[];         // Alternate aerodromes list (e.g., ['LETO', 'LEVS'])
   departureTime: string;      // ISO 8601 UTC timestamp or local datetime string
-  cruiseTas: number;          // True Airspeed in cruise (knots, e.g., 80)
+  cruiseIas: number;          // True Airspeed in cruise (knots, e.g., 80)
   initialAlt: number;         // Initial departure/takeoff altitude (feet AMSL, e.g., 300)
   arrivalAlt: number;         // Destination pattern/circuit altitude (feet AMSL, e.g., 2000)
   climbVy: number;            // Best rate of climb airspeed (knots, e.g., 70)
@@ -63,7 +63,7 @@ export interface FlightProfile {
 
 **Validation Rules**:
 - `departureTime` must be a valid parseable datetime.
-- `cruiseTas` > 0 and `climbVy` > 0.
+- `cruiseIas` > 0 and `climbVy` > 0.
 - `climbRateFpm` > 0 and `descentRateFpm` > 0.
 - `initialAlt` and `arrivalAlt` must be >= 0.
 

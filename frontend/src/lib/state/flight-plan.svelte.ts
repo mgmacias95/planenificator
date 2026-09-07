@@ -24,7 +24,7 @@ export class FlightPlanState {
 		destIcao: '',
 		altIcaos: [],
 		departureTime: new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 16),
-		cruiseTas: 80,
+		cruiseIas: 80,
 		initialAlt: 2500,
 		arrivalAlt: 2000,
 		climbVy: 70,

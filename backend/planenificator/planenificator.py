@@ -19,7 +19,7 @@ def generate_navigation_report(
     initial_alt: int,
     arrival_alt: int,
     cruise_alt: int,
-    tas: int,
+    ias: int,
     vy: int,
     rate_of_climb: int,
     rate_of_descent: int,
@@ -35,7 +35,7 @@ def generate_navigation_report(
     initial_alt: initial altitude in feet
     arrival_alt: arrival altitude in feet
     cruise_alt: cruise altitude in feet
-    tas: true airspeed in knots
+    ias: indicated airspeed in knots
     vy: best rate of climb (v_y) speed in knots
     rate_of_climb: rate of climb in feet per minute.
     rate_of_descent: rate of descent in feet per minute.
@@ -93,11 +93,12 @@ def generate_navigation_report(
     true_course = helpers.calculate_bearing(p1[0], p1[1], p2[0], p2[1])
 
     # decide the speed we will be flying: either rate of climb or true airspeed
-    speed = vy if is_climbing else tas
+    speed = vy if is_climbing else ias
+    tas = speed + (current_altitude / 1000 * 0.02 * speed)
 
     # compute ground speed
     gs, heading = helpers.calculate_ground_speed_and_heading(
-        tas=speed,
+        tas=tas,
         wind_speed=met.wind_speed,
         wind_direction=met.wind_direction,
         true_course=true_course
@@ -150,7 +151,7 @@ def generate_navigation_report(
         round(heading),
         wind_str,
         current_altitude,
-        speed,
+        tas,
         round(gs),
         round(dist_nm),
         helpers.float_minutes_to_string(ete),

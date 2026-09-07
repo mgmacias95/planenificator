@@ -11,7 +11,7 @@ def generate_multi_segment_navigation_report(
     cruise_alts: List[int],
     initial_alt: int = 2500,
     arrival_alt: int = 2000,
-    tas: int = 80,
+    ias: int = 80,
     vy: int = 70,
     rate_of_climb: int = 700,
     rate_of_descent: int = 500,
@@ -52,7 +52,7 @@ def generate_multi_segment_navigation_report(
 
   combined_table = [[
       'Waypoint', 'True course', 'Heading', 'Wind', 'Altitude',
-      'IAS', 'GS', 'Leg', 'ETE', 'ETA'
+      'TAS', 'GS', 'Leg', 'ETE', 'ETA'
   ]]
 
   merged_notam_data = {
@@ -72,7 +72,7 @@ def generate_multi_segment_navigation_report(
         initial_alt=current_alt,
         arrival_alt=target_exit_alt,
         cruise_alt=cruise_alt,
-        tas=tas,
+        ias=ias,
         vy=vy,
         rate_of_climb=rate_of_climb,
         rate_of_descent=rate_of_descent,

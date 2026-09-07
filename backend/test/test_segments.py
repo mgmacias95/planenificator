@@ -18,7 +18,7 @@ def test_segmented_route(m1, m2, m3, cruise_alts, initial, final):
       cruise_alts=cruise_alts,
       initial_alt=initial,
       arrival_alt=final,
-      tas=100,
+      ias=100,
       vy=80,
       rate_of_climb=500,
       rate_of_descent=500,

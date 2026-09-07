@@ -130,7 +130,7 @@
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_th()}</th>
 					<th scope="col" class="px-3 py-2.5 text-left">{m.navlog_wind()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_alt()}</th>
-					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_ias ? m.navlog_ias() : 'IAS'}</th>
+					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_tas()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_gs()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_dist()}</th>
 					<th scope="col" class="px-3 py-2.5 text-right">{m.navlog_ete()}</th>
@@ -172,7 +172,7 @@
 								{Math.round(leg.windDirDeg)}° / {Math.round(leg.windSpeedKt)} kt
 							</td>
 							<td class="px-3 py-2 text-right text-slate-200 tabular-nums">{leg.altitudeFt}</td>
-							<td class="px-3 py-2 text-right text-slate-200 tabular-nums">{leg.iasKt ?? leg.tasKt}</td>
+							<td class="px-3 py-2 text-right text-slate-200 tabular-nums">{leg.tasKt}</td>
 							<td class="px-3 py-2 text-right font-semibold text-slate-100 tabular-nums"
 								>{leg.groundSpeedKt}</td
 							>

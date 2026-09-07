@@ -69,7 +69,7 @@ export class AircraftProfilesState {
 		aircraftProfile: AircraftPerformanceProfile
 	): boolean {
 		return (
-			flightProfile.cruiseTas === aircraftProfile.cruiseTas &&
+			flightProfile.cruiseIas === aircraftProfile.cruiseIas &&
 			flightProfile.climbVy === aircraftProfile.climbVy &&
 			flightProfile.climbRateFpm === aircraftProfile.climbRateFpm &&
 			flightProfile.descentRateFpm === aircraftProfile.descentRateFpm
@@ -82,7 +82,7 @@ export class AircraftProfilesState {
 			this.selectedProfileId = id;
 			flightPlanStore.aircraftProfileId = id;
 			flightPlanStore.updateProfile({
-				cruiseTas: profile.cruiseTas,
+				cruiseIas: profile.cruiseIas,
 				climbVy: profile.climbVy,
 				climbRateFpm: profile.climbRateFpm,
 				descentRateFpm: profile.descentRateFpm
@@ -93,7 +93,7 @@ export class AircraftProfilesState {
 	async saveCustomProfile(data: {
 		id?: string;
 		name: string;
-		cruiseTas: number;
+		cruiseIas: number;
 		climbVy: number;
 		climbRateFpm: number;
 		descentRateFpm: number;
@@ -110,7 +110,7 @@ export class AircraftProfilesState {
 		const newProfile: AircraftPerformanceProfile = {
 			id: profileId,
 			name: data.name.trim(),
-			cruiseTas: Number(data.cruiseTas),
+			cruiseIas: Number(data.cruiseIas),
 			climbVy: Number(data.climbVy),
 			climbRateFpm: Number(data.climbRateFpm),
 			descentRateFpm: Number(data.descentRateFpm),
@@ -130,7 +130,7 @@ export class AircraftProfilesState {
 		this.selectedProfileId = newProfile.id;
 		flightPlanStore.aircraftProfileId = newProfile.id;
 		flightPlanStore.updateProfile({
-			cruiseTas: newProfile.cruiseTas,
+			cruiseIas: newProfile.cruiseIas,
 			climbVy: newProfile.climbVy,
 			climbRateFpm: newProfile.climbRateFpm,
 			descentRateFpm: newProfile.descentRateFpm
