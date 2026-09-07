@@ -93,6 +93,10 @@ def generate_multi_segment_navigation_report(
         if item not in merged_notam_data[key]:
           merged_notam_data[key].append(item)
 
+  # update the altitude of the last row to display the altitude in which 
+  # the route will be finished.
+  combined_table[-1][4] = arrival_alt
+
   combined_table.append(
       [
           'Total', '', '', '', '', '', '', round(total_dist, 2),

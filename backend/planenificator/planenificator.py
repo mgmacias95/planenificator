@@ -158,10 +158,6 @@ def generate_navigation_report(
     ])
     i += 1
 
-  # update the altitude of the last row to display the altitude in which 
-  # the route will be finished.
-  table[-1][4] = arrival_alt
-
   # NOTAM checks
   notam_data = {
       'route_conflicts': [],
