@@ -71,14 +71,14 @@ export function calculateOptimalZoom(
 	waypoints: { lat: number; lng: number }[],
 	width: number,
 	height: number,
-	padding: number = 70
+	padding: number = 24
 ): number {
 	if (waypoints.length === 0) return 6;
-	if (waypoints.length === 1) return 11;
+	if (waypoints.length === 1) return 13;
 
 	const { minLat, maxLat, minLng, maxLng } = getBounds(waypoints);
-	const availableWidth = Math.max(100, width - 2 * padding);
-	const availableHeight = Math.max(100, height - 2 * padding);
+	const availableWidth = Math.max(60, width - 2 * padding);
+	const availableHeight = Math.max(60, height - 2 * padding);
 
 	for (let z = 14; z >= 3; z--) {
 		const p1 = latLngToWorldPixel(maxLat, minLng, z);
@@ -206,8 +206,8 @@ export async function generateRouteMapSnapshot(
 		waypoints,
 		segments = [],
 		width = 1200,
-		height = 600,
-		padding = 75,
+		height: explicitHeight,
+		padding: explicitPadding,
 		tileUrlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 		attribution = '© OpenStreetMap contributors',
 		loadedCharts = [],
@@ -217,15 +217,66 @@ export async function generateRouteMapSnapshot(
 	if (!waypoints || waypoints.length === 0) return null;
 	if (typeof document === 'undefined') return null;
 
+	const padding = explicitPadding ?? 24;
 	const bounds = getBounds(waypoints);
-	const zoom = calculateOptimalZoom(waypoints, width, height, padding);
 
-	const centerLat = (bounds.minLat + bounds.maxLat) / 2;
-	const centerLng = (bounds.minLng + bounds.maxLng) / 2;
-	const centerWorld = latLngToWorldPixel(centerLat, centerLng, zoom);
+	let height: number;
+	let zoom: number;
 
-	const originX = centerWorld.x - width / 2;
-	const originY = centerWorld.y - height / 2;
+	if (explicitHeight !== undefined) {
+		height = explicitHeight;
+		zoom = calculateOptimalZoom(waypoints, width, height, padding);
+	} else {
+		// Adaptively choose zoom and height to maximize map detail without wasting margins
+		const availableWidth = Math.max(60, width - 2 * padding);
+		const maxAvailableHeight = 720 - 2 * padding;
+
+		let bestZoom = 3;
+		if (waypoints.length === 0) {
+			bestZoom = 6;
+		} else if (waypoints.length === 1) {
+			bestZoom = 13;
+		} else {
+			for (let z = 14; z >= 3; z--) {
+				const p1 = latLngToWorldPixel(bounds.maxLat, bounds.minLng, z);
+				const p2 = latLngToWorldPixel(bounds.minLat, bounds.maxLng, z);
+				const spanX = Math.abs(p2.x - p1.x);
+				const spanY = Math.abs(p2.y - p1.y);
+
+				if (spanX <= availableWidth && spanY <= maxAvailableHeight) {
+					bestZoom = z;
+					break;
+				}
+			}
+		}
+
+		zoom = bestZoom;
+		if (waypoints.length <= 1) {
+			height = 580;
+		} else {
+			const p1 = latLngToWorldPixel(bounds.maxLat, bounds.minLng, zoom);
+			const p2 = latLngToWorldPixel(bounds.minLat, bounds.maxLng, zoom);
+			const spanY = Math.abs(p2.y - p1.y);
+			// Calculate height fitting spanY comfortably between 540 and 720
+			height = Math.round(Math.min(720, Math.max(540, spanY + 2 * padding + 40)));
+		}
+	}
+
+	let originX: number;
+	let originY: number;
+
+	if (waypoints.length === 1) {
+		const singlePt = latLngToWorldPixel(waypoints[0].lat, waypoints[0].lng, zoom);
+		originX = singlePt.x - width / 2;
+		originY = singlePt.y - height / 2;
+	} else {
+		const p1 = latLngToWorldPixel(bounds.maxLat, bounds.minLng, zoom);
+		const p2 = latLngToWorldPixel(bounds.minLat, bounds.maxLng, zoom);
+		const centerPixelX = (p1.x + p2.x) / 2;
+		const centerPixelY = (p1.y + p2.y) / 2;
+		originX = centerPixelX - width / 2;
+		originY = centerPixelY - height / 2;
+	}
 
 	const toCanvas = (lat: number, lng: number) => {
 		const wp = latLngToWorldPixel(lat, lng, zoom);
@@ -409,7 +460,65 @@ export async function generateRouteMapSnapshot(
 		ctx.restore();
 	}
 
-	// 4. Draw Waypoint Markers and Labels
+	// 4. Flight Overview Banner Data
+	const depLabel = routeSummary?.depIcao || waypoints[0]?.name || 'DEP';
+	const destLabel = routeSummary?.destIcao || waypoints[waypoints.length - 1]?.name || 'DEST';
+	const distStr =
+		routeSummary?.totalDistanceNm !== undefined && routeSummary.totalDistanceNm > 0
+			? ` · ${routeSummary.totalDistanceNm.toFixed(1)} NM`
+			: '';
+	const chartTag = hasActiveChart && chartsDrawnCount > 0 ? ' · CARTA ENAIRE VFR' : '';
+	const bannerText = `✈ ${depLabel} → ${destLabel} · ${waypoints.length} WAYPOINTS${distStr}${chartTag}`;
+
+	// 5. Map Attribution Data
+	const effectiveAttribution =
+		hasActiveChart && chartsDrawnCount > 0
+			? `Carta VFR ENAIRE (${activeCharts.map((c) => c.name).join(', ')}) · AIP España`
+			: attribution;
+
+	// Measure and draw Flight Overview Banner (Top-Left)
+	ctx.save();
+	ctx.font = 'bold 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+	const bannerW = ctx.measureText(bannerText).width + 20;
+	const bannerH = 26;
+	const bannerX = 14;
+	const bannerY = 14;
+
+	drawRoundedRect(ctx, bannerX, bannerY, bannerW, bannerH, 6);
+	ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+	ctx.fill();
+	ctx.lineWidth = 1;
+	ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+	ctx.stroke();
+
+	ctx.fillStyle = '#38bdf8';
+	ctx.textAlign = 'left';
+	ctx.textBaseline = 'middle';
+	ctx.fillText(bannerText, bannerX + 10, bannerY + bannerH / 2 + 0.5);
+	ctx.restore();
+
+	// Measure and draw Map Attribution (Bottom-Right)
+	ctx.save();
+	ctx.font = '10px ui-sans-serif, system-ui, -apple-system, sans-serif';
+	const attrW = ctx.measureText(effectiveAttribution).width + 12;
+	const attrH = 18;
+	const attrX = width - attrW - 10;
+	const attrY = height - attrH - 8;
+
+	drawRoundedRect(ctx, attrX, attrY, attrW, attrH, 3);
+	ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+	ctx.fill();
+	ctx.lineWidth = 1;
+	ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+	ctx.stroke();
+
+	ctx.fillStyle = '#475569';
+	ctx.textAlign = 'left';
+	ctx.textBaseline = 'middle';
+	ctx.fillText(effectiveAttribution, attrX + 6, attrY + attrH / 2);
+	ctx.restore();
+
+	// 6. Draw Waypoint Markers and Labels (on top of map and banners)
 	waypoints.forEach((wp, idx) => {
 		const { x, y } = toCanvas(wp.lat, wp.lng);
 		const isDep = idx === 0;
@@ -460,6 +569,26 @@ export async function generateRouteMapSnapshot(
 		if (badgeY < 8) badgeY = 8;
 		if (badgeY + badgeH > height - 8) badgeY = height - 8 - badgeH;
 
+		// Avoid collision with Top-Left Flight Banner
+		if (
+			badgeX < bannerX + bannerW + 6 &&
+			badgeX + badgeW > bannerX &&
+			badgeY < bannerY + bannerH + 6 &&
+			badgeY + badgeH > bannerY
+		) {
+			badgeY = bannerY + bannerH + 8;
+		}
+
+		// Avoid collision with Bottom-Right Attribution
+		if (
+			badgeX + badgeW > attrX - 6 &&
+			badgeX < width &&
+			badgeY + badgeH > attrY - 6 &&
+			badgeY < height
+		) {
+			badgeY = attrY - badgeH - 6;
+		}
+
 		// Draw badge box
 		ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
 		ctx.shadowBlur = 6;
@@ -480,58 +609,6 @@ export async function generateRouteMapSnapshot(
 		ctx.fillText(nameText, badgeX + 7, badgeY + badgeH / 2 + 0.5);
 		ctx.restore();
 	});
-
-	// 5. Flight Overview Banner (Top-Left Badge)
-	ctx.save();
-	const depLabel = routeSummary?.depIcao || waypoints[0]?.name || 'DEP';
-	const destLabel = routeSummary?.destIcao || waypoints[waypoints.length - 1]?.name || 'DEST';
-	const distStr =
-		routeSummary?.totalDistanceNm !== undefined && routeSummary.totalDistanceNm > 0
-			? ` · ${routeSummary.totalDistanceNm.toFixed(1)} NM`
-			: '';
-	const chartTag = hasActiveChart && chartsDrawnCount > 0 ? ' · CARTA ENAIRE VFR' : '';
-	const bannerText = `✈ ${depLabel} → ${destLabel} · ${waypoints.length} WAYPOINTS${distStr}${chartTag}`;
-
-	ctx.font = 'bold 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
-	const bannerW = ctx.measureText(bannerText).width + 20;
-	const bannerH = 26;
-	const bannerX = 14;
-	const bannerY = 14;
-
-	drawRoundedRect(ctx, bannerX, bannerY, bannerW, bannerH, 6);
-	ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-	ctx.fill();
-	ctx.lineWidth = 1;
-	ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-	ctx.stroke();
-
-	ctx.fillStyle = '#38bdf8';
-	ctx.textAlign = 'left';
-	ctx.textBaseline = 'middle';
-	ctx.fillText(bannerText, bannerX + 10, bannerY + bannerH / 2 + 0.5);
-	ctx.restore();
-
-	// 6. Map Attribution (Bottom-Right Badge)
-	ctx.save();
-	ctx.font = '10px ui-sans-serif, system-ui, -apple-system, sans-serif';
-	const effectiveAttribution =
-		hasActiveChart && chartsDrawnCount > 0
-			? `Carta VFR ENAIRE (${activeCharts.map((c) => c.name).join(', ')}) · AIP España`
-			: attribution;
-	const attrW = ctx.measureText(effectiveAttribution).width + 12;
-	const attrH = 18;
-	const attrX = width - attrW - 10;
-	const attrY = height - attrH - 8;
-
-	drawRoundedRect(ctx, attrX, attrY, attrW, attrH, 3);
-	ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-	ctx.fill();
-	ctx.lineWidth = 1;
-	ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
-	ctx.stroke();
-
-	ctx.fillStyle = '#475569';
-	ctx.textAlign = 'left';
 	ctx.textBaseline = 'middle';
 	ctx.fillText(effectiveAttribution, attrX + 6, attrY + attrH / 2);
 	ctx.restore();

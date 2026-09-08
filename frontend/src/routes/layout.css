@@ -275,7 +275,8 @@ select {
 	.print-map-image {
 		display: block !important;
 		width: 100% !important;
-		max-height: 80mm !important;
+		max-height: 120mm !important;
+		height: auto !important;
 		object-fit: contain !important;
 		margin: 0 auto !important;
 	}

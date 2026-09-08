@@ -79,6 +79,22 @@ describe('Route Map Snapshot Service', () => {
 		expect(zoomShort).toBeLessThanOrEqual(14);
 	});
 
+	it('returns zoom 13 for a single waypoint and 6 for empty array', () => {
+		expect(calculateOptimalZoom([{ lat: 40.47, lng: -3.56 }], 1200, 600)).toBe(13);
+		expect(calculateOptimalZoom([], 1200, 600)).toBe(6);
+	});
+
+	it('default tighter padding (24px) allows equal or higher zoom levels than legacy padding (70px)', () => {
+		const route = [
+			{ lat: 40.37, lng: -3.78 }, // LECU
+			{ lat: 39.88, lng: -4.03 } // LETO
+		];
+		const legacyZoom = calculateOptimalZoom(route, 1200, 600, 70);
+		const tighterZoom = calculateOptimalZoom(route, 1200, 600); // defaults to 24
+		expect(tighterZoom).toBeGreaterThanOrEqual(legacyZoom);
+		expect(tighterZoom).toBe(10);
+	});
+
 	it('calculates required tile coordinates intersecting the viewport', () => {
 		const originX = 1000;
 		const originY = 800;
@@ -257,6 +273,75 @@ describe('Route Map Snapshot Service', () => {
 			expect.any(Number),
 			expect.any(Number)
 		);
+
+		vi.unstubAllGlobals();
+	});
+
+	it('adaptively sets canvas height and tight zoom when height option is omitted', async () => {
+		const mockContext = {
+			fillStyle: '',
+			fillRect: vi.fn(),
+			strokeStyle: '',
+			lineWidth: 0,
+			lineCap: '',
+			lineJoin: '',
+			beginPath: vi.fn(),
+			moveTo: vi.fn(),
+			lineTo: vi.fn(),
+			stroke: vi.fn(),
+			arc: vi.fn(),
+			fill: vi.fn(),
+			closePath: vi.fn(),
+			quadraticCurveTo: vi.fn(),
+			drawImage: vi.fn(),
+			save: vi.fn(),
+			restore: vi.fn(),
+			translate: vi.fn(),
+			rotate: vi.fn(),
+			fillText: vi.fn(),
+			measureText: vi.fn().mockReturnValue({ width: 50 }),
+			shadowColor: '',
+			shadowBlur: 0,
+			shadowOffsetY: 0
+		};
+
+		let createdCanvasWidth = 0;
+		let createdCanvasHeight = 0;
+
+		const mockCanvas = {
+			set width(val: number) {
+				createdCanvasWidth = val;
+			},
+			get width() {
+				return createdCanvasWidth;
+			},
+			set height(val: number) {
+				createdCanvasHeight = val;
+			},
+			get height() {
+				return createdCanvasHeight;
+			},
+			getContext: vi.fn().mockReturnValue(mockContext),
+			toDataURL: vi.fn().mockReturnValue('data:image/png;base64,adaptiveSnapshot')
+		};
+
+		vi.stubGlobal('document', {
+			createElement: vi.fn().mockReturnValue(mockCanvas)
+		});
+
+		const result = await generateRouteMapSnapshot({
+			waypoints: [
+				{ id: 'wp-1', lat: 40.37, lng: -3.78, name: 'LECU' },
+				{ id: 'wp-2', lat: 39.88, lng: -4.03, name: 'LETO' }
+			]
+		});
+
+		expect(result).toBe('data:image/png;base64,adaptiveSnapshot');
+		// Default width is 1200
+		expect(createdCanvasWidth).toBe(1200);
+		// Adaptive height is bounded between 540 and 720
+		expect(createdCanvasHeight).toBeGreaterThanOrEqual(540);
+		expect(createdCanvasHeight).toBeLessThanOrEqual(720);
 
 		vi.unstubAllGlobals();
 	});

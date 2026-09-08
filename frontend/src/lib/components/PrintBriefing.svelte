@@ -309,7 +309,7 @@
 							: ''}{routeMapSnapshotStore.hasEnaireChart ? 'ENAIRE VFR Chart' : 'VFR Course'}
 					</span>
 				</div>
-				<div class="overflow-hidden rounded-md border border-slate-300 bg-slate-100 shadow-2xs">
+				<div class="overflow-hidden rounded-md border border-slate-300 bg-white shadow-2xs">
 					<img
 						src={routeMapSnapshotStore.dataUrl}
 						alt="VFR Route Overview Map with marked waypoints"
