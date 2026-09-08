@@ -65,11 +65,11 @@
 			>
 				<div class="text-slate-600">
 					<strong class="text-slate-700">DATE:</strong>
-					{new Date().toLocaleDateString()}
+					{new Date().toISOString().slice(0, 10)}
 				</div>
 				<div class="text-slate-600">
 					<strong class="text-sky-800">UTC:</strong>
-					<span class="font-bold text-sky-950">{new Date().toTimeString().slice(0, 8)}Z</span>
+					<span class="font-bold text-sky-950">{new Date().toISOString().slice(11, 19)}Z</span>
 				</div>
 			</div>
 		</div>
