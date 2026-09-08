@@ -56,7 +56,7 @@
 						</span>
 					</div>
 					<p class="font-mono text-[10px] text-slate-500">
-						PLANENIFICATOR VFR FLIGHT BRIEFING · ICAO ANNEX 2 / SERA COMPLIANT
+						PLANENIFICATOR VFR FLIGHT BRIEFING
 					</p>
 				</div>
 			</div>

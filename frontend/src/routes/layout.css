@@ -221,6 +221,17 @@ select {
 
 /* Print Styles */
 @media print {
+	:root,
+	html {
+		color-scheme: light !important;
+		background-color: #ffffff !important;
+		background: #ffffff !important;
+	}
+	html,
+	body {
+		height: auto !important;
+		min-height: 0 !important;
+	}
 	* {
 		-webkit-print-color-adjust: exact !important;
 		print-color-adjust: exact !important;
@@ -282,7 +293,7 @@ select {
 	}
 	@page {
 		size: A4 portrait;
-		margin: 1cm;
+		/* margin: 1cm; */
 	}
 }
 
