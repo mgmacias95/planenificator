@@ -32,18 +32,14 @@ def test_segmented_route(m1, m2, m3, cruise_alts, initial, final):
   # point 1 is the first point in the route
   assert table[1][4] == initial
 
-  # if it's necessary to descend between two segments, there will be an
-  # intermediate point TOD in the table.
-  n_items_first_segment = 6 if cruise_alts[0] > cruise_alts[1] else 5
-
   # assert each row of the first segment contains the first altitude
-  for row in table[2:n_items_first_segment]:
+  for row in table[2:6]:
     assert row[4] == cruise_alts[0], (
         f'row {row} does not have the expected altitude of {cruise_alts[0]}'
     )
   
   # assert each row of the second segment contains the second altitude
-  for row in table[n_items_first_segment:-2]:
+  for row in table[6:-2]:
     assert row[4] == cruise_alts[1], (
         f'row {row} does not have the expected altitude of {cruise_alts[1]}'
     )

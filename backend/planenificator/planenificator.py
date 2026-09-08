@@ -55,7 +55,7 @@ def generate_navigation_report(
   is_climbing = initial_alt < cruise_alt
   # and use another flag to check when the descend starts
   needs_descending = arrival_alt < cruise_alt
-  
+
   # compute top of climb
   climb_time = helpers.calculate_top_of_climb(
       initial_alt=initial_alt,

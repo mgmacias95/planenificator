@@ -67,6 +67,12 @@ def generate_multi_segment_navigation_report(
   current_date = flight_start_date
 
   for kml_file, cruise_alt, target_exit_alt in zip(kmls, cruise_alts, next_alts):
+
+    # if the next segment is higher than the current one, it will be necessary
+    # to climb between segments to reach the next altitude. This climb
+    # will be computed during the first part of the next segment.
+    target_exit_alt = target_exit_alt if target_exit_alt < cruise_alt else cruise_alt
+
     table, notam_data, seg_dist, seg_time = planenificator.generate_navigation_report(
         input_kml=kml_file,
         initial_alt=current_alt,
