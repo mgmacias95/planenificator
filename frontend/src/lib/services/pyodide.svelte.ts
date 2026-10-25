@@ -16,7 +16,7 @@ declare global {
 	}
 }
 
-const PYODIDE_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/';
+const PYODIDE_INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/';
 
 export interface PyodideEngineStatus {
 	state:
@@ -157,7 +157,7 @@ export class PyodideService implements IPyodideService {
 					progressMessage: 'Loading aviation calculation modules...'
 				};
 
-				await this.pyodide.loadPackage(['ssl', 'micropip', 'requests', 'pyodide-http']);
+				await this.pyodide.loadPackage(['micropip', 'requests', 'pyodide-http']);
 				const micropip = this.pyodide.pyimport('micropip');
 				await micropip.install(['geopy', 'tabulate']);
 
