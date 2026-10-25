@@ -157,8 +157,7 @@ export class PyodideService implements IPyodideService {
 					progressMessage: 'Loading aviation calculation modules...'
 				};
 
-				await this.pyodide.loadPackage([
-					'micropip', 'requests', 'pyodide-http']);
+				await this.pyodide.loadPackage(['micropip', 'requests', 'pyodide-http']);
 				const micropip = this.pyodide.pyimport('micropip');
 				await micropip.install(['geopy', 'tabulate']);
 
